@@ -1,0 +1,53 @@
+{
+  "name": "symbol-security-tokens",
+  "version": "0.1.0",
+  "description": "Symbol library to handle security tokens",
+  "author": "NEM Foundation <devs@nem.foundation>",
+  "main": "dist/index.js",
+  "typings": "dist/index.d.ts",
+  "directories": {
+    "test": "test"
+  },
+  "dependencies": {
+    "symbol-sdk": "^0.17.3",
+    "rxjs": "^6.5.4"
+  },
+  "devDependencies": {
+    "@types/chai": "^4.2.9",
+    "@types/mocha": "^5.2.7",
+    "@typescript-eslint/eslint-plugin": "^2.15.0",
+    "@typescript-eslint/parser": "^2.15.0",
+    "chai": "^4.1.2",
+    "coveralls": "^3.0.9",
+    "eslint": "^6.8.0",
+    "mocha": "^5.2.0",
+    "nyc": "^14.1.1",
+    "rimraf": "^3.0.2",
+    "ts-node": "^7.0.0",
+    "typescript": "^3.8.3"
+  },
+  "scripts": {
+    "lint": "eslint src/ --ext .ts && eslint test/ --ext .ts",
+    "lint:fix": "eslint src/ --ext .ts --fix && eslint test/ --ext .ts --fix",
+    "build": "rimraf dist && mkdir dist && tsc",
+    "pretest": "npm run build",
+    "test": "mocha --ui bdd --recursive ./dist/test",
+    "test:cov-html": "nyc --reporter=html npm t",
+    "test:coverage": "nyc --reporter=text-lcov npm t",
+    "report-coverage": "nyc report --reporter=text-lcov | coveralls"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nemfoundation/symbol-security-tokens.git"
+  },
+  "license": "Apache 2.0",
+  "bugs": {
+    "url": "https://github.com/nemfoundation/symbol-security-tokens/issues"
+  },
+  "homepage": "https://github.com/nemfoundation/symbol-security-tokens#readme",
+  "nyc": {
+    "exclude": [
+      "**/*.spec.js"
+    ]
+  }
+}

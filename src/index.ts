@@ -14,14 +14,22 @@
  * limitations under the License.
  */
 
+// errors
+export { FailureCommandExecution } from './errors/FailureCommandExecution'
+export { FailureOperationForbidden } from './errors/FailureOperationForbidden'
+export { FailureMinimumRequiredOperators } from './errors/FailureMinimumRequiredOperators'
+export { FailureInvalidDerivationPath } from './errors/FailureInvalidDerivationPath'
+export { FailureInvalidCommand } from './errors/FailureInvalidCommand'
+export { FailureMissingArgument } from './errors/FailureMissingArgument'
+
 // models
 export { AccountMetadata } from './models/AccountMetadata'
 export { AccountRestriction } from './models/AccountRestriction'
 export { AllowanceResult } from './models/AllowanceResult'
 export { CommandOption } from './models/CommandOption'
-export { CommandResult } from './models/CommandResult'
 export { Notification } from './models/Notification'
 export { NotificationProof } from './models/NotificationProof'
+export { Operator } from './models/Operator'
 export { PublicationProof } from './models/PublicationProof'
 export { TokenIdentifier } from './models/TokenIdentifier'
 export { TokenMetadata } from './models/TokenMetadata'
@@ -29,9 +37,16 @@ export { TokenRestriction } from './models/TokenRestriction'
 export { TokenRestrictionType } from './models/TokenRestrictionType'
 export { TokenSource } from './models/TokenSource'
 
-// interfaces
-export { Command } from './interfaces/Command'
-export { Standard } from './interfaces/Standard'
+// helpers
+export { Accounts as AccountsHelpers } from './helpers/Accounts'
+export { Derivation as DerivationHelpers } from './helpers/Derivation'
+export { Transactions as TransactionsHelpers } from './helpers/Transactions'
+
+// contracts
+export { Context } from './contracts/Context'
+export { Command } from './contracts/Command'
+export { BaseCommand } from './contracts/BaseCommand'
+export { Standard } from './contracts/Standard'
 
 // standards
 export { NIP13 } from './standards/NIP13'

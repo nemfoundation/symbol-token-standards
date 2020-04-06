@@ -15,28 +15,9 @@
  */
 
 /**
- * @class AllowanceResult
- * @package models
+ * @class FailureCommandExecution
+ * @package errors
  * @since v0.1.0
- * @description Model that describes the result of an allowance request.
+ * @description Class that describes an a command execution error.
  */
-export class AllowanceResult {
-  /**
-   * Constructor for AllowanceResult objects
-   *
-   * @param {boolean} status
-   * @param {string|undefined} message (Optional)
-   */
-  public constructor(
-    /**
-     * @description The result status
-     */
-    public status: boolean,
-
-    /**
-     * @description The result message (Optional)
-     */
-    public message: string | undefined = undefined,
-  )
-  {}
-}
+export class FailureCommandExecution extends Error {}

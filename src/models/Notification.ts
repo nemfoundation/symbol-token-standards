@@ -22,7 +22,7 @@ import { TokenIdentifier } from './TokenIdentifier'
  * @class Notification
  * @package models
  * @since v0.1.0
- * @description Model for describing a notification.
+ * @description Model that describes a notification.
  */
 export class Notification {
   /**

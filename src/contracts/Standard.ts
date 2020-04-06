@@ -13,7 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { Address } from 'symbol-sdk'
+import { PublicAccount } from 'symbol-sdk'
+import { TransactionURI } from 'symbol-uri-scheme'
 
 // internal dependencies
 import {
@@ -22,7 +23,6 @@ import {
   AllowanceResult,
   Command,
   CommandOption,
-  CommandResult,
   Notification,
   NotificationProof,
   PublicationProof,
@@ -34,98 +34,112 @@ import {
 
 /**
  * @interface Standard
- * @package interfaces
+ * @package contracts
  * @since v0.1.0
- * @description Interface for describing security token standards.
+ * @description Interface that describes security token standards.
  */
 export interface Standard {
   /**
    * Creates a new Security Token with pre-defined Symbol feature set.
    *
-   * @param   {string}          name
-   * @param   {Address}         owner
-   * @param   {TokenSource}     source
-   * @param   {Array<Address>}  operators
+   * @param   {string}                name
+   * @param   {PublicAccount}         owner
+   * @param   {PublicAccount}         target
+   * @param   {TokenSource}           source
+   * @param   {Array<PublicAccount>}  operators
+   * @param   {number}                supply
    * @return  {TokenIdentifier}
    **/
   create(
     name: string,
-    owner: Address,
+    owner: PublicAccount,
+    target: PublicAccount,
     source: TokenSource,
-    operators: [Address]): TokenIdentifier
+    operators: PublicAccount[],
+    supply: number,
+  ): TokenIdentifier
 
   /**
    * Publish a previously created Security Token with identifier `tokenId`.
    *
    * @internal This method MUST use the `PublishToken` command.
-   * @param   {string}          name
-   * @param   {Address}         owner
-   * @param   {Array<Address>}  operators
+   * @param   {PublicAccount}         actor
+   * @param   {PublicAccount}         target
+   * @param   {Array<PublicAccount>}  operators
+   * @param   {TokenIdentifier}       tokenId
    * @return  {PublicationProof}
    **/
   publish(
-    tokenId: TokenIdentifier): PublicationProof
+    actor: PublicAccount,
+    target: PublicAccount,
+    operators: PublicAccount[],
+    tokenId: TokenIdentifier,
+  ): PublicationProof
 
   /**
    * Notify an account `account` about `notification`
    *
    * @param   {TokenIdentifier} tokenId
-   * @param   {Address}         account
+   * @param   {PublicAccount}         account
    * @param   {Notification}    notification
    * @return  {NotificationProof}
    **/
   notify(
     tokenId: TokenIdentifier,
-    account: Address,
-    notification: Notification): NotificationProof
+    account: PublicAccount,
+    notification: Notification,
+  ): NotificationProof
 
   /**
    * Verifies **allowance** of `sender` to transfer `tokenId` security token.
    *
-   * @param   {Address}         sender
+   * @param   {PublicAccount}         sender
    * @param   {TokenIdentifier} tokenId
    * @return  {AllowanceResult}
    **/
   canTransfer(
-    sender: Address,
-    tokenId: TokenIdentifier): AllowanceResult
+    sender: PublicAccount,
+    tokenId: TokenIdentifier,
+  ): AllowanceResult
 
   /**
    * Verifies **allowance** of `operator` to execute `command` with `tokenId` security token.
    *
    * @internal This method MUST use the `Command.canExecute()` method.
-   * @param   {Address}         operator
-   * @param   {Address}         account
+   * @param   {PublicAccount}         operator
+   * @param   {PublicAccount}         account
    * @param   {TokenIdentifier} tokenId
    * @param   {Command}         command
    * @param   {Array<CommandOption>}   argv
    * @return  {AllowanceResult}
    **/
   canExecute(
-    operator: Address,
-    account: Address,
+    operator: PublicAccount,
+    account: PublicAccount,
     tokenId: TokenIdentifier,
     command: Command,
-    argv: CommandOption[]): AllowanceResult
+    argv: CommandOption[],
+  ): AllowanceResult
 
   /**
    * Execute `command` for Security Token with identifier `tokenId`. Arguments
    * the command execution can be passed in `argv`.
    *
    * @internal This method MUST use the `Command.execute()` method.
-   * @param   {Address}         operator
-   * @param   {Address}         account
-   * @param   {TokenIdentifier} tokenId
-   * @param   {Command}         command
-   * @param   {Array<CommandOption>}   argv
-   * @return  {CommandResult}
+   * @param   {PublicAccount}         operator
+   * @param   {PublicAccount}         account
+   * @param   {TokenIdentifier}       tokenId
+   * @param   {string}                command
+   * @param   {Array<CommandOption>}  argv
+   * @return  {TransactionURI}
    **/
   execute(
-    operator: Address,
-    account: Address,
+    operator: PublicAccount,
+    account: PublicAccount,
     tokenId: TokenIdentifier,
-    command: Command,
-    argv: CommandOption[]): CommandResult
+    command: string,
+    argv: CommandOption[],
+  ): TransactionURI
 
   /**
    * Read metadata of a previously created Security Token with identifier `tokenId`.
@@ -134,18 +148,20 @@ export interface Standard {
    * @return  {Array<TokenMetadata>}
    **/
   getMetadata(
-    tokenId: TokenIdentifier): [TokenMetadata|AccountMetadata]
+    tokenId: TokenIdentifier,
+  ): [TokenMetadata|AccountMetadata]
 
   /**
    * Read restrictions of a previously created Security Token with identifier `tokenId`.
    * 
    * @param   {TokenIdentifier}       tokenId
-   * @param   {Address|undefined}     account (Optional)
+   * @param   {PublicAccount|undefined}     account (Optional)
    * @return  {Array<TokenRestriction|AccountRestriction>}
    **/
   getRestrictions(
     tokenId: TokenIdentifier,
-    account: Address|undefined): [TokenRestriction|AccountRestriction]
+    account: PublicAccount|undefined,
+  ): [TokenRestriction|AccountRestriction]
 
   // XXX getOperators
   // XXX getPartitions

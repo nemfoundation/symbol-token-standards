@@ -18,7 +18,7 @@
  * @class TokenSource
  * @package models
  * @since v0.1.0
- * @description Model for describing the source network of a token.
+ * @description Model that describes the source network of a token.
  */
 export class TokenSource {
   /**

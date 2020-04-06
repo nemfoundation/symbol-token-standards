@@ -19,7 +19,7 @@ import { Address } from 'symbol-sdk'
  * @class AccountMetadata
  * @package models
  * @since v0.1.0
- * @description Model for describing metadata related to an account.
+ * @description Model that describes metadata related to an account.
  */
 export class AccountMetadata {
   /**

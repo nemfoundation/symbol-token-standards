@@ -19,7 +19,7 @@ import { UInt64 } from 'symbol-sdk'
  * @class TokenIdentifier
  * @package models
  * @since v0.1.0
- * @description Model for describing identifiers of tokens.
+ * @description Model that describes identifiers of tokens.
  */
 export class TokenIdentifier {
   /**

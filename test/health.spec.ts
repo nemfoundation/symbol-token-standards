@@ -20,8 +20,8 @@ import {describe, it} from 'mocha'
 // internal dependencies
 import * as Lib from '../src/index'
 
-describe('symbol-security-tokens should', () => {
+describe('main should', () => {
   it('export NIP13 standard', () => {
-    expect(Lib.NIP13).not.to.be.undefined
+    expect(Lib.NIP13.TokenStandard).not.to.be.undefined
   })
 })

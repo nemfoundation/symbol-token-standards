@@ -13,19 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { TransactionURI } from 'symbol-uri-scheme'
 import {
-  Address,
+  PublicAccount,
   UInt64,
+  Deadline,
+  SHA3Hasher,
 } from 'symbol-sdk'
 
 // internal dependencies
+import { NIP13 as CommandsImpl } from './NIP13/index'
 import {
   AccountMetadata,
   AccountRestriction,
   AllowanceResult,
   Command,
   CommandOption,
-  CommandResult,
+  FailureInvalidCommand,
   Notification,
   NotificationProof,
   PublicationProof,
@@ -35,49 +39,119 @@ import {
   TokenRestriction,
   TokenRestrictionType,
   TokenSource,
+  Context,
 } from '../index'
 
 export namespace NIP13 {
+
+  /**
+   * @type NIP13.CommandsList
+   * @package standards
+   * @since v0.1.0
+   * @description Type that describes NIP13 token command lists
+   */
+  export type CommandsList = {
+    [id: string]: (c: Context, i: TokenIdentifier) => Command
+  }
+
+  /**
+   * @var NIP13.TokenCommands
+   * @package standards
+   * @since v0.1.0
+   * @description Object that describes NIP13 available token commands
+   * @link https://github.com/nemtech/NIP/blob/master/NIPs/nip-0013.md#token-commands
+   */
+  export const TokenCommands: CommandsList = {
+    'CreateToken': (c, i): Command => new CommandsImpl.CreateToken(c, i),
+    'PublishToken': (c, i): Command => new CommandsImpl.PublishToken(c, i),
+  }
+
+  /**
+   * @var NIP13.Revision
+   * @package standards
+   * @since v0.1.0
+   * @description Object that describes the count of NIP13 security token revisions
+   */
+  export const Revision: number = 1
+
   /**
    * @class NIP13.TokenStandard
    * @package standards
    * @since v0.1.0
-   * @description Class for describing NIP13 compliant security tokens.
+   * @description Class that describes NIP13 compliant security tokens
    * @link https://github.com/nemtech/NIP/blob/master/NIPs/nip-0013.md
    */
   export class TokenStandard implements Standard {
+
     /**
-     * Creates a new Security Token with pre-defined Symbol feature set.
+     * @description Last token command execution result. URIs must be executed
+     *              outside of the token standard
+     */
+    public result?: TransactionURI
+
+    /**
+     * Creates a new NIP13 Token and configures operators.
      *
-     * @param   {string}          name
-     * @param   {Address}         owner
-     * @param   {TokenSource}     source
-     * @param   {Array<Address>}  operators
+     * @param   {string}                name
+     * @param   {PublicAccount}         owner
+     * @param   {PublicAccount}         target
+     * @param   {TokenSource}           source
+     * @param   {Array<PublicAccount>}  operators
+     * @param   {number}                supply
      * @return  {TokenIdentifier}
      **/
-    public create(
+    create(
       name: string,
-      owner: Address,
+      owner: PublicAccount,
+      target: PublicAccount,
       source: TokenSource,
-      operators: [Address],
+      operators: PublicAccount[],
+      supply: number,
     ): TokenIdentifier {
-      return new TokenIdentifier(UInt64.fromUint(1))
+      // prepare deterministic token identifier
+      const hash = new Uint8Array(64)
+      const data = name 
+                 + '-' + supply.toString()
+                 + '-' + target.address.plain()
+                 + '-' + source.source
+                 + '-' + operators.map((p) => p.address.plain()).join(',')
+      SHA3Hasher.func(hash, data, 64)
+
+      // 4 left-most bytes for the token id
+      const left4b = parseInt(hash.slice(0, 4).join(''), 16)
+      const tokenId = new TokenIdentifier(UInt64.fromUint(left4b))
+
+      // execute token command `CreateToken`
+      this.result = this.execute(owner, target, tokenId, 'CreateToken', [
+        new CommandOption('name', name),
+        new CommandOption('source', source),
+        new CommandOption('operators', operators),
+        new CommandOption('supply', supply),
+      ])
+
+      return tokenId
     }
 
     /**
-     * Publish a previously created Security Token with identifier `tokenId`.
+     * Publish a previously created NIP13 token with identifier `tokenId`.
      *
      * @internal This method MUST use the `PublishToken` command.
-     * @param   {string}          name
-     * @param   {Address}         owner
-     * @param   {Array<Address>}  operators
+     * @param   {PublicAccount}    target
+     * @param   {TokenIdentifier}  tokenId
      * @return  {PublicationProof}
      **/
     public publish(
+      actor: PublicAccount,
+      target: PublicAccount,
+      operators: PublicAccount[],
       tokenId: TokenIdentifier,
     ): PublicationProof {
+
+      // execute token command `PublishToken`
+      this.result = this.execute(actor, target, tokenId, 'PublishToken', [])
+
       return new PublicationProof(
-        new TokenIdentifier(UInt64.fromUint(1)),
+        tokenId,
         ''
       )
     }
@@ -86,13 +160,13 @@ export namespace NIP13 {
      * Notify an account `account` about `notification`
      *
      * @param   {TokenIdentifier} tokenId
-     * @param   {Address}         account
+     * @param   {PublicAccount}         account
      * @param   {Notification}    notification
      * @return  {NotificationProof}
      **/
     public notify(
       tokenId: TokenIdentifier,
-      account: Address,
+      account: PublicAccount,
       notification: Notification
     ): NotificationProof {
       return new NotificationProof('')
@@ -101,12 +175,12 @@ export namespace NIP13 {
     /**
      * Verifies **allowance** of `sender` to transfer `tokenId` security token.
      *
-     * @param   {Address}         sender
+     * @param   {PublicAccount}         sender
      * @param   {TokenIdentifier} tokenId
      * @return  {AllowanceResult}
      **/
     public canTransfer(
-      sender: Address,
+      sender: PublicAccount,
       tokenId: TokenIdentifier
     ): AllowanceResult {
       return new AllowanceResult(true)
@@ -116,16 +190,16 @@ export namespace NIP13 {
      * Verifies **allowance** of `operator` to execute `command` with `tokenId` security token.
      *
      * @internal This method MUST use the `Command.canExecute()` method.
-     * @param   {Address}         operator
-     * @param   {Address}         account
+     * @param   {PublicAccount}         operator
+     * @param   {PublicAccount}         account
      * @param   {TokenIdentifier} tokenId
      * @param   {Command}         command
      * @param   {Array<CommandOption>}   argv
      * @return  {AllowanceResult}
      **/
     public canExecute(
-      operator: Address,
-      account: Address,
+      operator: PublicAccount,
+      account: PublicAccount,
       tokenId: TokenIdentifier,
       command: Command,
       argv: CommandOption[]
@@ -138,21 +212,45 @@ export namespace NIP13 {
      * the command execution can be passed in `argv`.
      *
      * @internal This method MUST use the `Command.execute()` method.
-     * @param   {Address}         operator
-     * @param   {Address}         account
-     * @param   {TokenIdentifier} tokenId
-     * @param   {Command}         command
-     * @param   {Array<CommandOption>}   argv
+     * @param   {PublicAccount}         operator  The execution `actor`
+     * @param   {PublicAccount}         account   The execution `target`
+     * @param   {TokenIdentifier}       tokenId
+     * @param   {Command}               command
+     * @param   {Array<CommandOption>}  argv
      * @return  {CommandResult}
      **/
     public execute(
-      operator: Address,
-      account: Address,
+      operator: PublicAccount,
+      account: PublicAccount,
       tokenId: TokenIdentifier,
-      command: Command,
-      argv: CommandOption[]
-    ): CommandResult {
-      return new CommandResult(true)
+      command: string,
+      argv: CommandOption[],
+    ): TransactionURI {
+      try {
+        // validate token command
+        if (!TokenCommands || !TokenCommands[command]) {
+          throw new FailureInvalidCommand('Invalid token command.')
+        }
+
+        // prepare context
+        const context = new Context(
+          Revision,
+          operator,
+          account,
+          Deadline.create(),
+          account.address.networkType,
+          undefined, // maxFee
+          argv,
+        )
+
+        // execute token command
+        const cmdFn = TokenCommands[command](context, tokenId)
+        return cmdFn.execute(operator, argv)
+      }
+      catch (f) {
+        // XXX error notifications / events
+        throw f
+      }
     }
 
     /**
@@ -171,12 +269,12 @@ export namespace NIP13 {
      * Read restrictions of a previously created Security Token with identifier `tokenId`.
      * 
      * @param   {TokenIdentifier}       tokenId
-     * @param   {Address|undefined}     account (Optional)
+     * @param   {PublicAccount|undefined}     account (Optional)
      * @return  {Array<TokenRestriction|AccountRestriction>}
      **/
     getRestrictions(
       tokenId: TokenIdentifier,
-      account: Address|undefined
+      account: PublicAccount|undefined
     ): [TokenRestriction|AccountRestriction] {
       return [new TokenRestriction(tokenId, TokenRestrictionType.AddressRestriction, 'EQ', 'dummy', '')]
     }

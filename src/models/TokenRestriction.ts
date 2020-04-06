@@ -21,7 +21,7 @@ import { TokenRestrictionType } from './TokenRestrictionType'
  * @class TokenRestriction
  * @package models
  * @since v0.1.0
- * @description Model for describing restrictions related to a token.
+ * @description Model that describes restrictions related to a token.
  */
 export class TokenRestriction {
   /**

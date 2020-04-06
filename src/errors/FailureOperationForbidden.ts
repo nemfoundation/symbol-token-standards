@@ -14,29 +14,13 @@
  * limitations under the License.
  */
 
-/**
- * @class CommandResult
- * @package models
- * @since v0.1.0
- * @description Model for describing the result of a command execution.
- */
-export class CommandResult {
-  /**
-   * Constructor for CommandResult objects
-   *
-   * @param {boolean} status
-   * @param {string|undefined} message (Optional)
-   */
-  public constructor(
-    /**
-     * @description The result status
-     */
-    public status: boolean,
+// internal dependencies
+import { FailureCommandExecution } from './FailureCommandExecution'
 
-    /**
-     * @description The result message (Optional)
-     */
-    public message: string | undefined = undefined,
-  )
-  {}
-}
+/**
+ * @class FailureOperationForbidden
+ * @package errors
+ * @since v0.1.0
+ * @description Class that describes an error for forbidden operations.
+ */
+export class FailureOperationForbidden extends FailureCommandExecution {}

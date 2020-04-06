@@ -18,7 +18,7 @@
  * @class NotificationProof
  * @package models
  * @since v0.1.0
- * @description Model for describing a proof of notification.
+ * @description Model that describes a proof of notification.
  */
 export class NotificationProof {
   /**

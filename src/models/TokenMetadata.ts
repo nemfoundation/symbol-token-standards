@@ -19,7 +19,7 @@ import { TokenIdentifier } from './TokenIdentifier'
  * @class TokenMetadata
  * @package models
  * @since v0.1.0
- * @description Model for describing metadata related to a token.
+ * @description Model that describes metadata related to a token.
  */
 export class TokenMetadata {
   /**

@@ -13,30 +13,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { PublicAccount } from 'symbol-sdk'
+
+// internal dependencies
+import { CommandOption } from './CommandOption'
 
 /**
- * @class AllowanceResult
+ * @class Operator
  * @package models
  * @since v0.1.0
- * @description Model that describes the result of an allowance request.
+ * @description Model that describes an operator account.
  */
-export class AllowanceResult {
+export class Operator extends CommandOption<PublicAccount> {
   /**
-   * Constructor for AllowanceResult objects
+   * Constructor for Operator objects
    *
-   * @param {boolean} status
-   * @param {string|undefined} message (Optional)
+   * @param {PublicAccount} account
    */
   public constructor(
     /**
-     * @description The result status
+     * @description The operator public account
      */
-    public status: boolean,
-
-    /**
-     * @description The result message (Optional)
-     */
-    public message: string | undefined = undefined,
-  )
-  {}
+    public account: PublicAccount,
+  ) {
+    super('operator', account)
+  }
 }

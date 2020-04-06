@@ -19,7 +19,7 @@ import { TokenIdentifier } from './TokenIdentifier'
  * @class PublicationProof
  * @package models
  * @since v0.1.0
- * @description Model for describing public proofs related to a token.
+ * @description Model that describes public proofs related to a token.
  */
 export class PublicationProof {
   /**

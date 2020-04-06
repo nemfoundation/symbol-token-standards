@@ -14,29 +14,13 @@
  * limitations under the License.
  */
 
-/**
- * @class AllowanceResult
- * @package models
- * @since v0.1.0
- * @description Model that describes the result of an allowance request.
- */
-export class AllowanceResult {
-  /**
-   * Constructor for AllowanceResult objects
-   *
-   * @param {boolean} status
-   * @param {string|undefined} message (Optional)
-   */
-  public constructor(
-    /**
-     * @description The result status
-     */
-    public status: boolean,
+// internal dependencies
+import { FailureCommandExecution } from './FailureCommandExecution'
 
-    /**
-     * @description The result message (Optional)
-     */
-    public message: string | undefined = undefined,
-  )
-  {}
-}
+/**
+ * @class FailureMinimumRequiredOperators
+ * @package errors
+ * @since v0.1.0
+ * @description Class that describes an error for the minimum required operators count.
+ */
+export class FailureMinimumRequiredOperators extends FailureCommandExecution {}

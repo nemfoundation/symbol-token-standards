@@ -22,7 +22,7 @@ import {
  * @class AccountRestriction
  * @package models
  * @since v0.1.0
- * @description Model for describing restrictions related to an account.
+ * @description Model that describes restrictions related to an account.
  */
 export class AccountRestriction {
   /**

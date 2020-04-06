@@ -18,9 +18,10 @@
  * @class CommandOption
  * @package models
  * @since v0.1.0
- * @description Model for describing parameters of a command execution.
+ * @description Model that describes parameters of a command execution.
  */
-export class CommandOption {
+export class CommandOption<ValueType = any> {
+
   /**
    * Constructor for CommandOption objects
    *
@@ -36,7 +37,7 @@ export class CommandOption {
     /**
      * @description The option value
      */
-    public value: any,
+    public value: ValueType,
   )
   {}
 }

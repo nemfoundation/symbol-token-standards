@@ -54,7 +54,9 @@ export abstract class BaseCommand implements Command {
      * @description Token identifier
      */
     protected readonly identifier: TokenIdentifier,
-  ) {}
+  ) {
+    this.synchronize()
+  }
 
   /// region abstract methods
   /**
@@ -63,6 +65,15 @@ export abstract class BaseCommand implements Command {
    * @return {string}
    **/
   public abstract get name(): string
+
+  /**
+   * Synchronize the command execution with the network. This method shall
+   * be used to fetch data required for execution.
+   *
+   * @async
+   * @return {Promise<boolean>}
+   */
+  public abstract async synchronize(): Promise<boolean>
 
   /**
    * Verifies **allowance** of `actor` to execute command.  Arguments to

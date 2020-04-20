@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { PublicAccount } from 'symbol-sdk'
+import { PublicAccount, Deadline, UInt64 } from 'symbol-sdk'
 import { TransactionURI } from 'symbol-uri-scheme'
 
 // internal dependencies
@@ -23,6 +23,7 @@ import {
   AllowanceResult,
   Command,
   CommandOption,
+  Context,
   Notification,
   NotificationProof,
   PublicationProof,
@@ -43,7 +44,7 @@ export interface Standard {
    * Creates a new Security Token with pre-defined Symbol feature set.
    *
    * @param   {string}                name
-   * @param   {PublicAccount}         owner
+   * @param   {PublicAccount}         actor
    * @param   {PublicAccount}         target
    * @param   {TokenSource}           source
    * @param   {Array<PublicAccount>}  operators
@@ -52,7 +53,7 @@ export interface Standard {
    **/
   create(
     name: string,
-    owner: PublicAccount,
+    actor: PublicAccount,
     target: PublicAccount,
     source: TokenSource,
     operators: PublicAccount[],
@@ -106,19 +107,19 @@ export interface Standard {
    * Verifies **allowance** of `operator` to execute `command` with `tokenId` security token.
    *
    * @internal This method MUST use the `Command.canExecute()` method.
-   * @param   {PublicAccount}         operator
-   * @param   {PublicAccount}         account
-   * @param   {TokenIdentifier} tokenId
-   * @param   {Command}         command
-   * @param   {Array<CommandOption>}   argv
+   * @param   {PublicAccount}         actor
+   * @param   {PublicAccount}         target
+   * @param   {TokenIdentifier}       tokenId
+   * @param   {string}                command
+   * @param   {Array<CommandOption>}  argv
    * @return  {AllowanceResult}
    **/
   canExecute(
-    operator: PublicAccount,
-    account: PublicAccount,
+    actor: PublicAccount,
+    target: PublicAccount,
     tokenId: TokenIdentifier,
-    command: Command,
-    argv: CommandOption[],
+    command: string,
+    argv: CommandOption[]
   ): AllowanceResult
 
   /**
@@ -140,6 +141,58 @@ export interface Standard {
     command: string,
     argv: CommandOption[],
   ): TransactionURI
+
+  /**
+   * Gets an execution context
+   *
+   * @param   {PublicAccount}   actor
+   * @param   {PublicAccount}   target
+   * @param   {Deadline}        deadline
+   * @param   {UInt64}          maxFee
+   * @param   {CommandOption[]} argv
+   * @return  {Context}
+   **/
+  getContext(
+    actor: PublicAccount,
+    target: PublicAccount,
+    deadline?: Deadline,
+    maxFee?: UInt64,
+    argv?: CommandOption[],
+  ): Context
+
+  /**
+   * Gets a command instance around `context` and `tokenId`.
+   *
+   * @param {TokenIdentifier} tokenId 
+   * @param {string}          command 
+   * @param {Context}         context 
+   * @return {Command}
+   */
+  getCommand(
+    tokenId: TokenIdentifier,
+    command: string,
+    context: Context,
+  ): Command
+
+  /**
+   * Read identifier of a token.
+   *
+   * @param   {PublicAccount}         target
+   * @return  {TokenIdentifier}
+   **/
+  getIdentifier(
+    target: PublicAccount,
+  ): TokenIdentifier
+
+  /**
+   * Read operators of a token.
+   * 
+   * @param   {PublicAccount}         target
+   * @return  {Array<PublicAccount>}
+   **/
+  getOperators(
+    target: PublicAccount,
+  ): PublicAccount[]
 
   /**
    * Read metadata of a previously created Security Token with identifier `tokenId`.

@@ -20,13 +20,15 @@ import {describe, it} from 'mocha'
 // internal dependencies
 import { getTestAccount } from '../mocks/Accounts'
 import { CommandOption, Context } from '../../src/index'
+import { Deadline, NetworkType, RepositoryFactoryHttp } from 'symbol-sdk'
 
 const context = new Context(
   1,
   getTestAccount('operator1'),
   getTestAccount('target'),
-  undefined,
+  new RepositoryFactoryHttp('http://api-01.us-west-1.symboldev.network:3000', NetworkType.TEST_NET),
   getTestAccount('target').address.networkType,
+  Deadline.create(),
   undefined,
   undefined,
 )
@@ -35,8 +37,9 @@ const contextWithArgs = new Context(
   1,
   getTestAccount('operator1'),
   getTestAccount('target'),
-  undefined,
+  new RepositoryFactoryHttp('http://api-01.us-west-1.symboldev.network:3000', NetworkType.TEST_NET),
   getTestAccount('target').address.networkType,
+  Deadline.create(),
   undefined,
   [new CommandOption('identifier', 'id')],
 )

@@ -18,6 +18,7 @@ import {
   NetworkType,
   PublicAccount,
   UInt64,
+  RepositoryFactoryHttp,
 } from 'symbol-sdk'
 
 // internal dependencies
@@ -50,14 +51,19 @@ export class Context {
     public target: PublicAccount,
 
     /**
-     * @description _Confirmation_ deadline
+     * @description Repository factory (symbol-sdk)
      */
-    public deadline: Deadline = Deadline.create(),
+    public factoryHttp: RepositoryFactoryHttp,
 
     /**
      * @description Network type
      */
-    public networkType: NetworkType,
+    public networkType: NetworkType = NetworkType.TEST_NET,
+
+    /**
+     * @description Deadline for execution
+     */
+    public deadline: Deadline = Deadline.create(),
 
     /**
      * @description Max paid fee

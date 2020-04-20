@@ -45,6 +45,7 @@ export { Transactions as TransactionsHelpers } from './helpers/Transactions'
 // contracts
 export { Context } from './contracts/Context'
 export { Command } from './contracts/Command'
+export { Service } from './contracts/Service'
 export { BaseCommand } from './contracts/BaseCommand'
 export { Standard } from './contracts/Standard'
 

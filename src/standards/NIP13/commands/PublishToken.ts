@@ -19,6 +19,7 @@ import {
   InnerTransaction,
   PublicAccount,
   Transaction,
+  MultisigAccountInfo,
 } from 'symbol-sdk'
 
 // internal dependencies
@@ -28,6 +29,7 @@ import {
   CommandOption,
   TransactionsHelpers,
 } from '../../../index'
+import {MultisigService} from '../services/MultisigService'
 
 /**
  * @class NIP13.PublishToken
@@ -37,11 +39,38 @@ import {
  */
 export class PublishToken extends BaseCommand {
   /**
+   * @description List of operators for this token.
+   */
+  public operators: MultisigAccountInfo[] = []
+
+  /**
    * @description Getter for the command name.
    * @see {BaseCommand.name}
    **/
   public get name(): string {
     return 'PublishToken'
+  }
+
+  /**
+   * Synchronize the command execution with the network. This method shall
+   * be used to fetch data required for execution.
+   *
+   * @async
+   * @return {Promise<boolean>}
+   */
+  public async synchronize(): Promise<boolean> {
+    // prepare
+    const target = this.context.target.address
+    const service = new MultisigService(this.context)
+
+    // request configuration
+    const http = this.context.factoryHttp.createMultisigRepository()
+    const graph = await http.getMultisigAccountGraphInfo(target).toPromise()
+
+    // consolidate/reduce graph
+    this.operators = service.getMultisigAccountInfoFromGraph(graph)
+
+    return true
   }
 
   /**
@@ -53,12 +82,19 @@ export class PublishToken extends BaseCommand {
     actor: PublicAccount,
     argv?: CommandOption[]
   ): AllowanceResult {
-    // XXX read "operators"
     const hasActor = actor && actor.address
     const hasArgv = undefined !== argv || true
 
-    // allows everyone to publish tokens
-    return new AllowanceResult(hasActor && hasArgv)
+    // @see PublishToken#synchronize()
+    const isOperator = undefined !== this.operators.find(
+      (msig: MultisigAccountInfo) => {
+        return msig.cosignatories
+          .map((c) => c.publicKey)
+          .includes(actor.publicKey)
+      })
+
+    // allows only operators to publish tokens
+    return new AllowanceResult(hasActor && hasArgv && isOperator)
   }
 
   /**

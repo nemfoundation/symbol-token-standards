@@ -19,6 +19,7 @@ import {
   UInt64,
   Deadline,
   SHA3Hasher,
+  RepositoryFactoryHttp,
 } from 'symbol-sdk'
 
 // internal dependencies
@@ -45,13 +46,21 @@ import {
 export namespace NIP13 {
 
   /**
+   * @type NIP13.CommandFn
+   * @package standards
+   * @since v0.1.0
+   * @description Type that describes NIP13 token command functions
+   */
+  export type CommandFn = (c: Context, i: TokenIdentifier) => Command
+
+  /**
    * @type NIP13.CommandsList
    * @package standards
    * @since v0.1.0
    * @description Type that describes NIP13 token command lists
    */
   export type CommandsList = {
-    [id: string]: (c: Context, i: TokenIdentifier) => Command
+    [id: string]: CommandFn
   }
 
   /**
@@ -90,19 +99,31 @@ export namespace NIP13 {
     public result?: TransactionURI
 
     /**
+     * Constructs a NIP13 token standard object.
+     *
+     * @param {string} nodeUrl 
+     */
+    public constructor(
+      /**
+       * @description The endpoint URL that will be used to connect.
+       */
+      public readonly nodeUrl: string
+    ) {}
+
+    /**
      * Creates a new NIP13 Token and configures operators.
      *
      * @param   {string}                name
-     * @param   {PublicAccount}         owner
+     * @param   {PublicAccount}         actor
      * @param   {PublicAccount}         target
      * @param   {TokenSource}           source
      * @param   {Array<PublicAccount>}  operators
      * @param   {number}                supply
      * @return  {TokenIdentifier}
      **/
-    create(
+    public create(
       name: string,
-      owner: PublicAccount,
+      actor: PublicAccount,
       target: PublicAccount,
       source: TokenSource,
       operators: PublicAccount[],
@@ -122,7 +143,7 @@ export namespace NIP13 {
       const tokenId = new TokenIdentifier(UInt64.fromUint(left4b))
 
       // execute token command `CreateToken`
-      this.result = this.execute(owner, target, tokenId, 'CreateToken', [
+      this.result = this.execute(actor, target, tokenId, 'CreateToken', [
         new CommandOption('name', name),
         new CommandOption('source', source),
         new CommandOption('operators', operators),
@@ -190,21 +211,37 @@ export namespace NIP13 {
      * Verifies **allowance** of `operator` to execute `command` with `tokenId` security token.
      *
      * @internal This method MUST use the `Command.canExecute()` method.
-     * @param   {PublicAccount}         operator
-     * @param   {PublicAccount}         account
-     * @param   {TokenIdentifier} tokenId
-     * @param   {Command}         command
-     * @param   {Array<CommandOption>}   argv
+     * @param   {PublicAccount}         actor
+     * @param   {PublicAccount}         target
+     * @param   {TokenIdentifier}       tokenId
+     * @param   {string}                command
+     * @param   {Array<CommandOption>}  argv
      * @return  {AllowanceResult}
      **/
     public canExecute(
-      operator: PublicAccount,
-      account: PublicAccount,
+      actor: PublicAccount,
+      target: PublicAccount,
       tokenId: TokenIdentifier,
-      command: Command,
+      command: string,
       argv: CommandOption[]
     ): AllowanceResult {
-      return new AllowanceResult(true)
+      try {
+        // instanciate command and context
+        const cmdFn = this.getCommand(tokenId, command, this.getContext(
+          actor,
+          target,
+          Deadline.create(),
+          undefined,
+          argv,
+        ))
+
+        // use `canExecute` for token command
+        return cmdFn.canExecute(actor, argv)
+      }
+      catch (f) {
+        // XXX error notifications / events
+        throw f
+      }
     }
 
     /**
@@ -212,45 +249,111 @@ export namespace NIP13 {
      * the command execution can be passed in `argv`.
      *
      * @internal This method MUST use the `Command.execute()` method.
-     * @param   {PublicAccount}         operator  The execution `actor`
-     * @param   {PublicAccount}         account   The execution `target`
+     * @param   {PublicAccount}         actor  The execution `actor`
+     * @param   {PublicAccount}         target   The execution `target`
      * @param   {TokenIdentifier}       tokenId
-     * @param   {Command}               command
+     * @param   {string}                command
      * @param   {Array<CommandOption>}  argv
-     * @return  {CommandResult}
+     * @return  {TransactionURI}
      **/
     public execute(
-      operator: PublicAccount,
-      account: PublicAccount,
+      actor: PublicAccount,
+      target: PublicAccount,
       tokenId: TokenIdentifier,
       command: string,
       argv: CommandOption[],
     ): TransactionURI {
       try {
-        // validate token command
-        if (!TokenCommands || !TokenCommands[command]) {
-          throw new FailureInvalidCommand('Invalid token command.')
-        }
-
-        // prepare context
-        const context = new Context(
-          Revision,
-          operator,
-          account,
+        // instanciate command and context
+        const cmdFn = this.getCommand(tokenId, command, this.getContext(
+          actor,
+          target,
           Deadline.create(),
-          account.address.networkType,
-          undefined, // maxFee
+          undefined,
           argv,
-        )
+        ))
 
         // execute token command
-        const cmdFn = TokenCommands[command](context, tokenId)
-        return cmdFn.execute(operator, argv)
+        return cmdFn.execute(actor, argv)
       }
       catch (f) {
         // XXX error notifications / events
         throw f
       }
+    }
+
+    /**
+     * Gets an execution context
+     *
+     * @param   {PublicAccount}   actor
+     * @param   {PublicAccount}   target
+     * @param   {Deadline}        deadline
+     * @param   {UInt64}          maxFee
+     * @param   {CommandOption[]} argv
+     * @return  {Context}
+     */
+    public getContext(
+      actor: PublicAccount,
+      target: PublicAccount,
+      deadline?: Deadline,
+      maxFee?: UInt64,
+      argv?: CommandOption[],
+    ): Context {
+      return new Context(
+        Revision,
+        actor,
+        target,
+        new RepositoryFactoryHttp(this.nodeUrl),
+        target.address.networkType, // use "target" network type
+        deadline,
+        maxFee,
+        argv
+      )
+    }
+
+    /**
+     * Gets a command instance around `context` and `tokenId`.
+     *
+     * @param {TokenIdentifier} tokenId 
+     * @param {string}          command 
+     * @param {Context}         context 
+     * @return {Command}
+     */
+    public getCommand(
+      tokenId: TokenIdentifier,
+      command: string,
+      context: Context,
+    ): Command {
+      // validate token command
+      if (!TokenCommands || !TokenCommands[command]) {
+        throw new FailureInvalidCommand('Invalid token command.')
+      }
+
+      return TokenCommands[command](context, tokenId)
+    }
+
+    /**
+     * Read identifier of a token.
+     *
+     * @param   {PublicAccount}         target
+     * @return  {TokenIdentifier}
+     **/
+    public getIdentifier(
+      target: PublicAccount,
+    ): TokenIdentifier {
+      return new TokenIdentifier(UInt64.fromUint(1))
+    }
+
+    /**
+     * Read operators of a previously created Security Token with identifier `tokenId`.
+     * 
+     * @param   {PublicAccount}         target
+     * @return  {Array<PublicAccount>}
+     **/
+    public getOperators(
+      target: PublicAccount,
+    ): PublicAccount[] {
+      return []
     }
 
     /**

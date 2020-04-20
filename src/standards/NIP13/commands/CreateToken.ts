@@ -63,6 +63,18 @@ export class CreateToken extends BaseCommand {
   }
 
   /**
+   * Synchronize the command execution with the network. This method shall
+   * be used to fetch data required for execution.
+   *
+   * @async
+   * @return {Promise<boolean>}
+   */
+  public async synchronize(): Promise<boolean> {
+    // no-data
+    return true
+  }
+
+  /**
    * @description Method that verifies the allowance of an operator to 
    *              execute the token command `CreateToken`.
    * @see {BaseCommand.canExecute}

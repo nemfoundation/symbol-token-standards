@@ -13,13 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { UInt64 } from 'symbol-sdk'
+import {
+  MosaicId,
+  MosaicNonce,
+  PublicAccount,
+  UInt64,
+} from 'symbol-sdk'
+
+// internal dependencies
+import { TokenSource } from '../index'
 
 /**
  * @class TokenIdentifier
  * @package models
  * @since v0.1.0
- * @description Model that describes identifiers of tokens.
+ * @description Model that describes identifiers of tokens. An identifier
+ *              is created around an \a id (4 bytes), a \a source (up to 32 bytes)
+ *              and an \a owner public account (32 bytes)
  */
 export class TokenIdentifier {
   /**
@@ -32,6 +42,35 @@ export class TokenIdentifier {
      * @description The token identifier
      */
     public id: UInt64,
+
+    /**
+     * @description The token source
+     */
+    public source: TokenSource,
+
+    /**
+     * @description The deterministic account that represents the token.
+     *              This account is also the owner of the mosaic on the network.
+     */
+    public target: PublicAccount,
   )
   {}
+
+  /**
+   * Getter for the readonly property `nonce`.
+   *
+   * @return {MosaicNonce}
+   */
+  public get nonce(): MosaicNonce {
+    return MosaicNonce.createFromHex(this.id.toHex())
+  }
+
+  /**
+   * Get mosaic id representation of an instance.
+   *
+   * @return {MosaicId}
+   */
+  public toMosaicId(): MosaicId {
+    return MosaicId.createFromNonce(this.nonce, this.target)
+  }
 }

@@ -25,9 +25,8 @@ import { Deadline, NetworkType, RepositoryFactoryHttp } from 'symbol-sdk'
 const context = new Context(
   1,
   getTestAccount('operator1'),
-  getTestAccount('target'),
   new RepositoryFactoryHttp('http://api-01.us-west-1.symboldev.network:3000', NetworkType.TEST_NET),
-  getTestAccount('target').address.networkType,
+  getTestAccount('operator1').address.networkType,
   Deadline.create(),
   undefined,
   undefined,
@@ -36,9 +35,8 @@ const context = new Context(
 const contextWithArgs = new Context(
   1,
   getTestAccount('operator1'),
-  getTestAccount('target'),
   new RepositoryFactoryHttp('http://api-01.us-west-1.symboldev.network:3000', NetworkType.TEST_NET),
-  getTestAccount('target').address.networkType,
+  getTestAccount('operator1').address.networkType,
   Deadline.create(),
   undefined,
   [new CommandOption('identifier', 'id')],

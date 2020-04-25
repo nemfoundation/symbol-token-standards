@@ -13,23 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { TransactionURI } from 'symbol-uri-scheme'
 import {
-  AggregateTransaction,
   InnerTransaction,
-  PublicAccount,
   Transaction,
-  MultisigAccountInfo,
+  PublicAccount,
 } from 'symbol-sdk'
 
 // internal dependencies
-import {
-  AllowanceResult,
-  BaseCommand,
-  CommandOption,
-  TransactionsHelpers,
-} from '../../../index'
-import {MultisigService} from '../services/MultisigService'
+import { TransactionsHelpers } from '../../../index'
+import { AbstractCommand } from './AbstractCommand'
+import { TokenPartition } from '../../../models/TokenPartition'
 
 /**
  * @class NIP13.PublishToken
@@ -37,12 +30,15 @@ import {MultisigService} from '../services/MultisigService'
  * @since v0.1.0
  * @description Class that describes a token command for publishing NIP13 compliant tokens.
  */
-export class PublishToken extends BaseCommand {
+export class PublishToken extends AbstractCommand {
   /**
-   * @description List of operators for this token.
+   * @description List of **required** arguments for this token command.
    */
-  public operators: MultisigAccountInfo[] = []
+  public arguments: string[] = [
+    'partitions',
+  ]
 
+  // region abstract methods
   /**
    * @description Getter for the command name.
    * @see {BaseCommand.name}
@@ -52,111 +48,83 @@ export class PublishToken extends BaseCommand {
   }
 
   /**
-   * Synchronize the command execution with the network. This method shall
-   * be used to fetch data required for execution.
-   *
-   * @async
-   * @return {Promise<boolean>}
-   */
-  public async synchronize(): Promise<boolean> {
-    // prepare
-    const target = this.context.target.address
-    const service = new MultisigService(this.context)
-
-    // request configuration
-    const http = this.context.factoryHttp.createMultisigRepository()
-    const graph = await http.getMultisigAccountGraphInfo(target).toPromise()
-
-    // consolidate/reduce graph
-    this.operators = service.getMultisigAccountInfoFromGraph(graph)
-
-    return true
-  }
-
-  /**
-   * @description Method that verifies the allowance of an operator to 
-   *              execute the token command `PublishToken`.
-   * @see {BaseCommand.canExecute}
-   **/
-  public canExecute(
-    actor: PublicAccount,
-    argv?: CommandOption[]
-  ): AllowanceResult {
-    const hasActor = actor && actor.address
-    const hasArgv = undefined !== argv || true
-
-    // @see PublishToken#synchronize()
-    const isOperator = undefined !== this.operators.find(
-      (msig: MultisigAccountInfo) => {
-        return msig.cosignatories
-          .map((c) => c.publicKey)
-          .includes(actor.publicKey)
-      })
-
-    // allows only operators to publish tokens
-    return new AllowanceResult(hasActor && hasArgv && isOperator)
-  }
-
-  /**
-   * @description Method that executes the token command `PublishToken`.
-   * @see {BaseCommand.execute}
-   **/
-  public execute(
-    actor: PublicAccount,
-    argv?: CommandOption[]
-  ): TransactionURI {
-    // verify authorization to execute
-    super.assertExecutionAllowance(actor, argv)
-
-    // validate mandatory inputs
-    super.assertHasMandatoryArguments(argv, []) // no args
-
-    // create the blockchain contract
-    const contract = this.prepare()
-
-    // return result
-    return new TransactionURI(contract.serialize())
-  }
-
-  /**
-   * @description Wrap the command's transactions inside an aggregate transaction.
-   * @see {BaseCommand.wrap}
-   * @return {AggregateTransaction[]} Aggregate bonded transaction
-   **/
-  protected prepare(): AggregateTransaction | Transaction {
-    // create aggregate bonded
-    return AggregateTransaction.createBonded(
-      this.context.deadline,
-      this.transactions,
-      this.context.networkType,
-      [],
-      this.context.maxFee,
-    )
-  }
-
-  /**
-   * @description Build a command's transactions. Transactions returned here will
-   *              be formatted to a transaction URI in the `execute()` step.
-   * @see {BaseCommand.transactions}
-   * @return {AggregateTransaction[]} Aggregate bonded transaction
+   * @description Builds the inner transactions necessary for the
+   *              execution of a `PublishToken` command.
+   * @see {AbstractCommand.transactions}
+   * @return {Transaction[]} Aggregate bonded transaction
    **/
   protected get transactions(): Transaction[] {
 
+    // read external arguments
+    const partitions = this.context.getInput('partitions', [])
+
     // prepare output
     const transactions: InnerTransaction[] = []
+    const signers: PublicAccount[] = []
 
-    // Transaction 01: Add token identifier to
+    // Transaction 01: Add execution proof transaction
     transactions.push(TransactionsHelpers.createTransfer(
       this.context,
-      this.context.target.address,
+      this.target.address,
       undefined,
       undefined,
-      'NIP13(v' + this.context.revision + '):' + this.identifier.id.toHex()
+      'NIP13(v' + this.context.revision + '):publish:' + this.identifier.id.toHex()
     ))
 
-    // return transactions issued by *target*
+    // Transaction 01 is issued by **target** account (multisig)
+    signers.push(this.target)
+
+    // :note: the next block affects all accounts listed as partitions.
+    for (let i = 0, m = partitions.length; i < m; i ++) {
+      const partition = partitions[i] as TokenPartition
+      const account = partition.deriveAccount(
+        this.keyProvider,
+        this.context.networkType,
+      ).publicAccount
+
+      // Transaction 02: MultisigAccountModificationTransaction
+      // :warning: minApproval is always n-1 to permit loss of up to 1 key.
+      transactions.push(TransactionsHelpers.createMultisigAccountModification(
+        this.context,
+        this.operators.length - 1,
+        this.operators
+            .map((op) => op.account) // operators
+            .concat(partition.owner) // + partition owner
+      ))
+
+      // Transaction 02 is issued by partition owner
+      signers.push(account)
+
+      // Transaction 03: MosaicAddressRestriction for partition owner
+      // :warning: this gives the partition owner Holder access to the token.
+      transactions.push(TransactionsHelpers.createMosaicAddressRestriction(
+        this.context,
+        this.identifier.toMosaicId(),
+        'User_Role',
+        account.address,
+        2, // 2 = Holder
+      ))
+
+      // Transaction 03 is issued by **target** account (multisig)
+      signers.push(this.target)
+
+      // Transaction 04: TransferTransaction adding partition label and transferring ownership.
+      transactions.push(TransactionsHelpers.createTransfer(
+        this.context,
+        account.address,
+        this.identifier.toMosaicId(),
+        partition.amount,
+        'NIP13(v' + this.context.revision + '):partition:' + partition.name
+      ))
+
+      // Transaction 04 is issued by **target** account (multisig)
+      signers.push(this.target)
+    }
+
+    // return transactions issued by assigned signer
     return transactions.map(
-      (transaction) => transaction.toAggregate(this.context.target)
+      (transaction, i) => transaction.toAggregate(signers[i])
     )
   }
+  // end-region abstract methods
 }

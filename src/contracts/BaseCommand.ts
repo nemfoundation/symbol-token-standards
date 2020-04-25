@@ -41,6 +41,7 @@ import { TokenIdentifier } from '../models/TokenIdentifier'
 export abstract class BaseCommand implements Command {
   /**
    * Construct a command object around `context`
+   * and `identifier`
    *
    * @param {Context} context 
    */

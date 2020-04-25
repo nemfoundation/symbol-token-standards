@@ -13,9 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { TransactionURI } from 'symbol-uri-scheme'
 import {
-  AggregateTransaction,
+  Account,
   InnerTransaction,
   MosaicId,
   MosaicNonce,
@@ -25,13 +24,8 @@ import {
 } from 'symbol-sdk'
 
 // internal dependencies
-import {
-  AllowanceResult,
-  BaseCommand,
-  CommandOption,
-  FailureMinimumRequiredOperators,
-  TransactionsHelpers,
-} from '../../../index'
+import { TransactionsHelpers } from '../../../index'
+import { AbstractCommand } from './AbstractCommand'
 
 /**
  * @class NIP13.CreateToken
@@ -53,20 +47,23 @@ import {
  * :note: `Transaction 07` represents the first operator address restriction transaction, there will be one of these
  * for each of the token operators.
  */
-export class CreateToken extends BaseCommand {
+export class CreateToken extends AbstractCommand {
   /**
-   * @description Getter for the command name.
-   * @see {BaseCommand.name}
-   **/
-  public get name(): string {
-    return 'CreateToken'
-  }
+   * @description List of **required** arguments for this token command.
+   */
+  public arguments: string[] = [
+    'name',
+    'source',
+    'identifier',
+    'operators',
+  ]
 
   /**
    * Synchronize the command execution with the network. This method shall
    * be used to fetch data required for execution.
    *
    * @async
+   * @override The 'CreateToken' command does not need synchronization.
    * @return {Promise<boolean>}
    */
   public async synchronize(): Promise<boolean> {
@@ -74,88 +71,49 @@ export class CreateToken extends BaseCommand {
     return true
   }
 
+  // region abstract methods
   /**
-   * @description Method that verifies the allowance of an operator to 
-   *              execute the token command `CreateToken`.
-   * @see {BaseCommand.canExecute}
+   * @description Getter for the command name.
+   * @see {AbstractCommand.name}
    **/
-  public canExecute(
-    actor: PublicAccount,
-    argv?: CommandOption[]
-  ): AllowanceResult {
-    const hasActor = actor && actor.address
-    const hasArgv = undefined !== argv || true
-
-    // allows everyone to create tokens
-    return new AllowanceResult(hasActor && hasArgv)
+  public get name(): string {
+    return 'CreateToken'
   }
 
   /**
-   * @description Method that executes the token command `CreateToken`.
-   * @see {BaseCommand.execute}
-   **/
-  public execute(
-    actor: PublicAccount,
-    argv?: CommandOption[]
-  ): TransactionURI {
-    // verify authorization to execute
-    super.assertExecutionAllowance(actor, argv)
-
-    // validate mandatory inputs
-    super.assertHasMandatoryArguments(argv, [
-      'name',
-      'source',
-      'identifier',
-      'operators',
-    ])
-
-    // enforce a minimum of 2 operators
-    const operators = this.context.getInput('operators', [])
-    if (!operators.length || operators.length < 2) {
-      throw new FailureMinimumRequiredOperators('NIP13 requires a minimum of 2 operators')
-    }
-
-    // create the blockchain contract
-    const contract = this.prepare()
-
-    // return result
-    return new TransactionURI(contract.serialize())
-  }
-
-  /**
-   * @description Wrap the command's transactions inside an aggregate transaction.
-   * @see {BaseCommand.wrap}
-   * @return {AggregateTransaction[]} Aggregate bonded transaction
-   **/
-  protected prepare(): AggregateTransaction | Transaction {
-    // create aggregate bonded
-    return AggregateTransaction.createBonded(
-      this.context.deadline,
-      this.transactions,
-      this.context.networkType,
-      [],
-      this.context.maxFee,
-    )
-  }
-
-  /**
-   * @description Build a command's transactions. Transactions returned here will
-   *              be formatted to a transaction URI in the `execute()` step.
-   * @see {BaseCommand.transactions}
-   * @return {AggregateTransaction[]} Aggregate bonded transaction
+   * @description Builds the inner transactions necessary for the
+   *              execution of a `CreateToken` command.
+   * @see {AbstractCommand.transactions}
+   * @return {Transaction[]} Aggregate bonded transaction
    **/
   protected get transactions(): Transaction[] {
+    // read execution context
+    const target = this.target
+    const identifier = this.identifier.id.toHex()
 
-    const identifier = this.context.getInput('identifier', '')
-    const owner = this.context.getInput('owner', this.context.actor)
-    const supply = this.context.getInput('supply', 1)
-    const fullName = this.context.getInput('name', 'UnknownToken')
+    // read external arguments
+    const fullName = this.context.getInput('name', '')
     const operators = this.context.getInput('operators', [])
+    const source = this.context.getInput('source', '')
+    const supply = this.context.getInput('supply', 1)
 
     // prepare output
     const transactions: InnerTransaction[] = []
+    const signers: PublicAccount[] = []
 
-    // Transaction 01: MultisigAccountModificationTransaction
+    // Transaction 01: Add execution proof transaction
+    transactions.push(TransactionsHelpers.createTransfer(
+      this.context,
+      this.target.address,
+      undefined,
+      undefined,
+      'NIP13(v' + this.context.revision + '):create:' + this.identifier.id.toHex()
+    ))
+
+    // Transaction 01 is issued by **target** account (multisig)
+    signers.push(this.target)
+
+    // Transaction 02: MultisigAccountModificationTransaction
     // :warning: minApproval is always n-1 to permit loss of up to 1 key.
     transactions.push(TransactionsHelpers.createMultisigAccountModification(
       this.context,
@@ -163,7 +121,10 @@ export class CreateToken extends BaseCommand {
       operators
     ))
 
-    // Transaction 02: NamespaceRegistrationtTransaction
+    // Transaction 02 is issued by **target** account (multisig)
+    signers.push(this.target)
+
+    // Transaction 03: NamespaceRegistrationtTransaction
     // :note: up to `maxNamespacesDepth` levels are allowed
     const parts = fullName.split('.')
     for (let i = 0, m = parts.length; i < m; i ++) {
@@ -173,11 +134,14 @@ export class CreateToken extends BaseCommand {
         parts[i],
         i === 0 ? undefined : parts.slice(0, i - 1).join('.'),
       ))
+
+      // Transaction 03 is issued by **target** account (multisig)
+      signers.push(this.target)
     }
 
-    // Transaction 03: MosaicDefinitionTransaction
+    // Transaction 04: MosaicDefinitionTransaction
     const mosaicNonce = MosaicNonce.createFromHex(identifier)
-    const mosaicId = MosaicId.createFromNonce(mosaicNonce, owner)
+    const mosaicId = MosaicId.createFromNonce(mosaicNonce, target)
     transactions.push(TransactionsHelpers.createMosaicDefinition(
       this.context,
       mosaicNonce,
@@ -185,7 +149,10 @@ export class CreateToken extends BaseCommand {
       2010240, // 1 year at 15 sec / block
     ))
 
-    // Transaction 04: MosaicSupplyChangeTransaction
+    // Transaction 04 is issued by **target** account (multisig)
+    signers.push(this.target)
+
+    // Transaction 05: MosaicSupplyChangeTransaction
     if (0 < supply) {
       transactions.push(TransactionsHelpers.createMosaicSupplyChange(
         this.context,
@@ -193,40 +160,55 @@ export class CreateToken extends BaseCommand {
         mosaicId,
         // action=Increase
       ))
+
+      // Transaction 05 is issued by **target** account (multisig)
+      signers.push(this.target)
     }
 
-    // Transaction 05: AccountMosaicRestrictionTransaction with MosaicId = mosaicId
+    // Transaction 06: AccountMosaicRestrictionTransaction with MosaicId = mosaicId
     transactions.push(TransactionsHelpers.createAccountMosaicRestriction(
       this.context,
       [mosaicId],
       // flags=Allow_Mosaic
     ))
 
-    // Transaction 06: MosaicGlobalRestriction with mosaicId (refId 0)
-    // :warning: This restricts the **mosaic** to accounts who have the 'Is_Operator' flag set.
+    // Transaction 06 is issued by **target** account (multisig)
+    signers.push(this.target)
+
+    // Transaction 07: MosaicGlobalRestriction with mosaicId (refId 0)
+    // :warning: This restricts the **mosaic** to accounts who have the 
+    //           'User_Role' flag set to at least 2 ("Holder" | "Operator").
     transactions.push(TransactionsHelpers.createMosaicGlobalRestriction(
       this.context,
       mosaicId,
-      'Is_Operator',
-      MosaicRestrictionType.EQ,
-      1, // value
+      'User_Role',
+      MosaicRestrictionType.GE,
+      2, // 1 = Guest ; 2 = Holder ; 3 = Operator
     ))
 
-    // Transaction 07: MosaicAddressRestriction for operator address
-    // :note: This affects the **operators** the 'Is_Operator' flag for said mosaic.
+    // Transaction 07 is issued by **target** account (multisig)
+    signers.push(this.target)
+
+    // Transaction 08: MosaicAddressRestriction for operator address
+    // :note: This affects each **operator's** 'User_Role' flag for said mosaic.
     for (let i = 0, m = operators.length; i < m; i ++) {
       const operator = operators[i] as PublicAccount
       transactions.push(TransactionsHelpers.createMosaicAddressRestriction(
         this.context,
         mosaicId,
-        'Is_Operator',
+        'User_Role',
         operator.address,
+        3, // 3 = Operator
       ))
+
+      // Transaction 08 is issued by the operator account
+      signers.push(operator)
     }
 
-    // return transactions issued by *target*
+    // return transactions issued by assigned signer
     return transactions.map(
-      (transaction) => transaction.toAggregate(this.context.target)
+      (transaction, i) => transaction.toAggregate(signers[i])
     )
   }
+  // end-region abstract methods
 }

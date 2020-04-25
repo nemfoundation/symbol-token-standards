@@ -46,11 +46,6 @@ export class Context {
     public actor: PublicAccount,
 
     /**
-     * @description Target account (deterministic operator)
-     */
-    public target: PublicAccount,
-
-    /**
      * @description Repository factory (symbol-sdk)
      */
     public factoryHttp: RepositoryFactoryHttp,

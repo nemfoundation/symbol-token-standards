@@ -23,7 +23,7 @@ import { Service } from '../../../index'
 
 /**
  * @class MultisigService
- * @package contracts
+ * @package services
  * @since v0.1.0
  * @description Class that describes a service around multi-signature features.
  */
@@ -32,7 +32,7 @@ export class MultisigService extends Service {
    * Reduce a multisig graph to an array of multisig
    * account information.
    *
-   * @param {MultisigAccountGraphIngo} graph 
+   * @param {MultisigAccountGraphInfo} graph 
    * @return {MultisigAccountInfo[]}
    */
   public getMultisigAccountInfoFromGraph(

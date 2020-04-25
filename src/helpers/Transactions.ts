@@ -63,7 +63,7 @@ export namespace Transactions {
       context.deadline,
       nonce,
       mosaicId,
-      MosaicFlags.create(true, true, true),
+      MosaicFlags.create(true, false, true), // always non-transferable.
       0,
       UInt64.fromUint(duration),
       context.networkType,
@@ -200,6 +200,7 @@ export namespace Transactions {
     mosaicId: MosaicId,
     restrictionKey: string,
     target: Address,
+    value: number,
   ): MosaicAddressRestrictionTransaction => {
     const key = KeyGenerator.generateUInt64Key(restrictionKey.toLowerCase())
     return MosaicAddressRestrictionTransaction.create(
@@ -207,7 +208,7 @@ export namespace Transactions {
       mosaicId,
       key,
       target,
-      UInt64.fromUint(1), // newRestrictionValue
+      UInt64.fromUint(value), // newRestrictionValue
       context.networkType,
       undefined,
       context.maxFee,

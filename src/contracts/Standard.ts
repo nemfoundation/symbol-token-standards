@@ -29,6 +29,7 @@ import {
   PublicationProof,
   TokenIdentifier,
   TokenMetadata,
+  TokenPartition,
   TokenRestriction,
   TokenSource,
 } from '../index'
@@ -54,7 +55,6 @@ export interface Standard {
   create(
     name: string,
     actor: PublicAccount,
-    target: PublicAccount,
     source: TokenSource,
     operators: PublicAccount[],
     supply: number,
@@ -65,17 +65,15 @@ export interface Standard {
    *
    * @internal This method MUST use the `PublishToken` command.
    * @param   {PublicAccount}         actor
-   * @param   {PublicAccount}         target
-   * @param   {Array<PublicAccount>}  operators
    * @param   {TokenIdentifier}       tokenId
-   * @return  {PublicationProof}
+   * @param   {TokenPartition[]}      partitions (Optional) partitions records
+   * @return  {TransactionURI}
    **/
   publish(
     actor: PublicAccount,
-    target: PublicAccount,
-    operators: PublicAccount[],
     tokenId: TokenIdentifier,
-  ): PublicationProof
+    partitions: TokenPartition[],
+  ): TransactionURI
 
   /**
    * Notify an account `account` about `notification`
@@ -108,7 +106,6 @@ export interface Standard {
    *
    * @internal This method MUST use the `Command.canExecute()` method.
    * @param   {PublicAccount}         actor
-   * @param   {PublicAccount}         target
    * @param   {TokenIdentifier}       tokenId
    * @param   {string}                command
    * @param   {Array<CommandOption>}  argv
@@ -116,7 +113,6 @@ export interface Standard {
    **/
   canExecute(
     actor: PublicAccount,
-    target: PublicAccount,
     tokenId: TokenIdentifier,
     command: string,
     argv: CommandOption[]
@@ -127,16 +123,14 @@ export interface Standard {
    * the command execution can be passed in `argv`.
    *
    * @internal This method MUST use the `Command.execute()` method.
-   * @param   {PublicAccount}         operator
-   * @param   {PublicAccount}         account
+   * @param   {PublicAccount}         actor
    * @param   {TokenIdentifier}       tokenId
    * @param   {string}                command
    * @param   {Array<CommandOption>}  argv
    * @return  {TransactionURI}
    **/
   execute(
-    operator: PublicAccount,
-    account: PublicAccount,
+    actor: PublicAccount,
     tokenId: TokenIdentifier,
     command: string,
     argv: CommandOption[],
@@ -154,7 +148,6 @@ export interface Standard {
    **/
   getContext(
     actor: PublicAccount,
-    target: PublicAccount,
     deadline?: Deadline,
     maxFee?: UInt64,
     argv?: CommandOption[],
@@ -173,16 +166,6 @@ export interface Standard {
     command: string,
     context: Context,
   ): Command
-
-  /**
-   * Read identifier of a token.
-   *
-   * @param   {PublicAccount}         target
-   * @return  {TokenIdentifier}
-   **/
-  getIdentifier(
-    target: PublicAccount,
-  ): TokenIdentifier
 
   /**
    * Read operators of a token.

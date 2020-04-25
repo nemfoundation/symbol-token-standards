@@ -20,7 +20,14 @@ import {
   Deadline,
   SHA3Hasher,
   RepositoryFactoryHttp,
+  NetworkType,
 } from 'symbol-sdk'
+import {
+  ExtendedKey,
+  MnemonicPassPhrase,
+  Network,
+  Wallet,
+} from 'symbol-hd-wallets'
 
 // internal dependencies
 import { NIP13 as CommandsImpl } from './NIP13/index'
@@ -37,11 +44,13 @@ import {
   Standard,
   TokenIdentifier,
   TokenMetadata,
+  TokenPartition,
   TokenRestriction,
   TokenRestrictionType,
   TokenSource,
   Context,
 } from '../index'
+import { AbstractCommand } from './NIP13/commands/AbstractCommand'
 
 export namespace NIP13 {
 
@@ -51,7 +60,7 @@ export namespace NIP13 {
    * @since v0.1.0
    * @description Type that describes NIP13 token command functions
    */
-  export type CommandFn = (c: Context, i: TokenIdentifier) => Command
+  export type CommandFn = (c: Context, i: TokenIdentifier, k: Wallet) => Command
 
   /**
    * @type NIP13.CommandsList
@@ -71,8 +80,9 @@ export namespace NIP13 {
    * @link https://github.com/nemtech/NIP/blob/master/NIPs/nip-0013.md#token-commands
    */
   export const TokenCommands: CommandsList = {
-    'CreateToken': (c, i): Command => new CommandsImpl.CreateToken(c, i),
-    'PublishToken': (c, i): Command => new CommandsImpl.PublishToken(c, i),
+    'CreateToken': (c, i, k): Command => new CommandsImpl.CreateToken(c, i, k),
+    'PublishToken': (c, i, k): Command => new CommandsImpl.PublishToken(c, i, k),
+    'TransferOwnership': (c, i, k): Command => new CommandsImpl.TransferOwnership(c, i, k),
   }
 
   /**
@@ -93,8 +103,18 @@ export namespace NIP13 {
   export class TokenStandard implements Standard {
 
     /**
+     * @description The deterministic public account representing the token.
+     */
+    public target: PublicAccount
+
+    /**
+     * @description The key provider for said token.
+     */
+    public keyProvider: Wallet
+
+    /**
      * @description Last token command execution result. URIs must be executed
-     *              outside of the token standard
+     *              outside of the token standard.
      */
     public result?: TransactionURI
 
@@ -107,8 +127,32 @@ export namespace NIP13 {
       /**
        * @description The endpoint URL that will be used to connect.
        */
-      public readonly nodeUrl: string
-    ) {}
+      public readonly nodeUrl: string,
+
+      /**
+       * @description The endpoint network type.
+       */
+      public readonly networkType: NetworkType,
+
+      /**
+       * @description The BIP39 mnemonic pass phrase used with said token.
+       */
+      public readonly bip39: MnemonicPassPhrase
+    ) {
+      // initialize key provider
+      this.keyProvider = new Wallet(
+        ExtendedKey.createFromSeed(
+          this.bip39.toSeed().toString('hex'),
+          Network.CATAPULT
+        )
+      )
+
+      // derive base keys
+      this.target = this.keyProvider.getChildPublicAccount(
+        `m/44'/4343'/101'/0'/0'`, // XXX refactor me
+        this.networkType,
+      )
+    }
 
     /**
      * Creates a new NIP13 Token and configures operators.
@@ -124,26 +168,26 @@ export namespace NIP13 {
     public create(
       name: string,
       actor: PublicAccount,
-      target: PublicAccount,
       source: TokenSource,
       operators: PublicAccount[],
       supply: number,
     ): TokenIdentifier {
+
       // prepare deterministic token identifier
       const hash = new Uint8Array(64)
-      const data = name 
+      const data = this.target.address.plain()
                  + '-' + supply.toString()
-                 + '-' + target.address.plain()
+                 + '-' + name
                  + '-' + source.source
                  + '-' + operators.map((p) => p.address.plain()).join(',')
       SHA3Hasher.func(hash, data, 64)
 
-      // 4 left-most bytes for the token id
+      // 4 left-most bytes for the mosaic nonce
       const left4b = parseInt(hash.slice(0, 4).join(''), 16)
-      const tokenId = new TokenIdentifier(UInt64.fromUint(left4b))
+      const tokenId = new TokenIdentifier(UInt64.fromUint(left4b), source, this.target)
 
       // execute token command `CreateToken`
-      this.result = this.execute(actor, target, tokenId, 'CreateToken', [
+      this.result = this.execute(actor, tokenId, 'CreateToken', [
         new CommandOption('name', name),
         new CommandOption('source', source),
         new CommandOption('operators', operators),
@@ -154,27 +198,25 @@ export namespace NIP13 {
     }
 
     /**
-     * Publish a previously created NIP13 token with identifier `tokenId`.
+     * Publish a previously created Security Token with identifier `tokenId`.
      *
      * @internal This method MUST use the `PublishToken` command.
-     * @param   {PublicAccount}    target
-     * @param   {TokenIdentifier}  tokenId
+     * @param   {PublicAccount}         actor
+     * @param   {TokenIdentifier}       tokenId
+     * @param   {TokenPartition[]}      partitions (Optional) partitions records
      * @return  {PublicationProof}
      **/
     public publish(
       actor: PublicAccount,
-      target: PublicAccount,
-      operators: PublicAccount[],
       tokenId: TokenIdentifier,
-    ): PublicationProof {
-
+      partitions: TokenPartition[] = [],
+    ): TransactionURI {
       // execute token command `PublishToken`
-      this.result = this.execute(actor, target, tokenId, 'PublishToken', [])
+      this.result = this.execute(actor, tokenId, 'PublishToken', [
+        new CommandOption('partitions', partitions),
+      ])
 
-      return new PublicationProof(
-        tokenId,
-        ''
-      )
+      return this.result
     }
 
     /**
@@ -212,7 +254,6 @@ export namespace NIP13 {
      *
      * @internal This method MUST use the `Command.canExecute()` method.
      * @param   {PublicAccount}         actor
-     * @param   {PublicAccount}         target
      * @param   {TokenIdentifier}       tokenId
      * @param   {string}                command
      * @param   {Array<CommandOption>}  argv
@@ -220,7 +261,6 @@ export namespace NIP13 {
      **/
     public canExecute(
       actor: PublicAccount,
-      target: PublicAccount,
       tokenId: TokenIdentifier,
       command: string,
       argv: CommandOption[]
@@ -229,7 +269,6 @@ export namespace NIP13 {
         // instanciate command and context
         const cmdFn = this.getCommand(tokenId, command, this.getContext(
           actor,
-          target,
           Deadline.create(),
           undefined,
           argv,
@@ -250,7 +289,6 @@ export namespace NIP13 {
      *
      * @internal This method MUST use the `Command.execute()` method.
      * @param   {PublicAccount}         actor  The execution `actor`
-     * @param   {PublicAccount}         target   The execution `target`
      * @param   {TokenIdentifier}       tokenId
      * @param   {string}                command
      * @param   {Array<CommandOption>}  argv
@@ -258,7 +296,6 @@ export namespace NIP13 {
      **/
     public execute(
       actor: PublicAccount,
-      target: PublicAccount,
       tokenId: TokenIdentifier,
       command: string,
       argv: CommandOption[],
@@ -267,7 +304,6 @@ export namespace NIP13 {
         // instanciate command and context
         const cmdFn = this.getCommand(tokenId, command, this.getContext(
           actor,
-          target,
           Deadline.create(),
           undefined,
           argv,
@@ -294,7 +330,6 @@ export namespace NIP13 {
      */
     public getContext(
       actor: PublicAccount,
-      target: PublicAccount,
       deadline?: Deadline,
       maxFee?: UInt64,
       argv?: CommandOption[],
@@ -302,9 +337,8 @@ export namespace NIP13 {
       return new Context(
         Revision,
         actor,
-        target,
         new RepositoryFactoryHttp(this.nodeUrl),
-        target.address.networkType, // use "target" network type
+        this.networkType,
         deadline,
         maxFee,
         argv
@@ -329,19 +363,7 @@ export namespace NIP13 {
         throw new FailureInvalidCommand('Invalid token command.')
       }
 
-      return TokenCommands[command](context, tokenId)
-    }
-
-    /**
-     * Read identifier of a token.
-     *
-     * @param   {PublicAccount}         target
-     * @return  {TokenIdentifier}
-     **/
-    public getIdentifier(
-      target: PublicAccount,
-    ): TokenIdentifier {
-      return new TokenIdentifier(UInt64.fromUint(1))
+      return TokenCommands[command](context, tokenId, this.keyProvider)
     }
 
     /**

@@ -17,6 +17,7 @@
 // commands
 import { CreateToken as CreateTokenImpl } from './commands/CreateToken'
 import { PublishToken as PublishTokenImpl } from './commands/PublishToken'
+import { TransferOwnership as TransferOwnershipImpl } from './commands/TransferOwnership'
 
 export namespace NIP13 {
   /**
@@ -34,4 +35,12 @@ export namespace NIP13 {
    * @description Class that describes a token command for publishing NIP13 compliant tokens.
    */
   export class PublishToken extends PublishTokenImpl {}
+
+  /**
+   * @class NIP13.TransferOwnership
+   * @package interfaces
+   * @since v0.1.0
+   * @description Class that describes a token command for transferring the ownership of NIP13 compliant tokens.
+   */
+  export class TransferOwnership extends TransferOwnershipImpl {}
 }

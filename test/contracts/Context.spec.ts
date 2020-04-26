@@ -18,7 +18,7 @@ import {expect} from 'chai'
 import {describe, it} from 'mocha'
 
 // internal dependencies
-import { getTestAccount } from '../mocks/Accounts'
+import { getTestAccount } from '../mocks/index'
 import { CommandOption, Context } from '../../src/index'
 import { Deadline, NetworkType, RepositoryFactoryHttp } from 'symbol-sdk'
 
@@ -42,7 +42,7 @@ const contextWithArgs = new Context(
   [new CommandOption('identifier', 'id')],
 )
 
-describe('Context --->', () => {
+describe('contracts/Context --->', () => {
   describe('getInput() should', () => {
     it('use default value given no arguments', () => {
       // act

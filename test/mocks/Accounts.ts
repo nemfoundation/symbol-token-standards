@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 import { Account, NetworkType, PublicAccount } from 'symbol-sdk'
+import { MnemonicPassPhrase } from 'symbol-hd-wallets'
 
 type TestAccountType = {
   [name: string]: {
@@ -50,4 +51,13 @@ export const getTestAccount = (name: string): PublicAccount => {
 
   const spec = TEST_ACCOUNTS[name]
   return Account.createFromPrivateKey(spec.privateKey, spec.networkType).publicAccount
+}
+
+export const getTestMnemonic = () : MnemonicPassPhrase => {
+  return new MnemonicPassPhrase([
+    'torch', 'label', 'system', 'hungry', 'honey', 'endorse',
+    'knock', 'marine', 'orange', 'junk', 'major', 'double',
+    'early', 'runway', 'maximum', 'mother', 'shove', 'stamp',
+    'behave', 'already', 'entry', 'west', 'swear', 'fortune',
+  ].join(' '))
 }

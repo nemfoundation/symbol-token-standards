@@ -22,6 +22,7 @@ import {
   ExtendedKey,
   MnemonicPassPhrase,
   Wallet,
+  Network,
 } from 'symbol-hd-wallets'
 
 // internal dependencies
@@ -72,7 +73,7 @@ export namespace Accounts {
     const seed = mnemonic.toSeed(pw).toString('hex')
 
     // create extended key from mnemonic
-    const xKey = ExtendedKey.createFromSeed(seed)
+    const xKey = ExtendedKey.createFromSeed(seed, Network.CATAPULT)
 
     // create wallet
     const wallet = new Wallet(xKey)
@@ -95,7 +96,7 @@ export namespace Accounts {
     const seed = mnemonic.toSeed(pw).toString('hex')
 
     // create extended key from mnemonic
-    const xKey = ExtendedKey.createFromSeed(seed)
+    const xKey = ExtendedKey.createFromSeed(seed, Network.CATAPULT)
 
     // create wallet
     const wallet = new Wallet(xKey)

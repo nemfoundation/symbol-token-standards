@@ -49,6 +49,7 @@ import {
   TokenRestrictionType,
   TokenSource,
   Context,
+  DerivationHelpers,
 } from '../index'
 import { AbstractCommand } from './NIP13/commands/AbstractCommand'
 
@@ -97,7 +98,7 @@ export namespace NIP13 {
    * @class NIP13.TokenStandard
    * @package standards
    * @since v0.1.0
-   * @description Class that describes NIP13 compliant security tokens
+   * @description Class that describes NIP13 security tokens standard
    * @link https://github.com/nemtech/NIP/blob/master/NIPs/nip-0013.md
    */
   export class TokenStandard implements Standard {
@@ -149,7 +150,7 @@ export namespace NIP13 {
 
       // derive base keys
       this.target = this.keyProvider.getChildPublicAccount(
-        `m/44'/4343'/101'/0'/0'`, // XXX refactor me
+        DerivationHelpers.DEFAULT_HDPATH,
         this.networkType,
       )
     }
@@ -404,4 +405,14 @@ export namespace NIP13 {
       return [new TokenRestriction(tokenId, TokenRestrictionType.AddressRestriction, 'EQ', 'dummy', '')]
     }
   }
+
+  /**
+   * @class NIP13.Token
+   * @package standards
+   * @since v0.1.0
+   * @description Class that describes NIP13 compliant security tokens
+   * @link https://github.com/nemtech/NIP/blob/master/NIPs/nip-0013.md
+   */
+  export class Token extends TokenStandard {}
+
 }

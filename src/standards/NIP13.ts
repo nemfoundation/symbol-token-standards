@@ -15,6 +15,7 @@
  */
 import { TransactionURI } from 'symbol-uri-scheme'
 import {
+  Convert,
   PublicAccount,
   UInt64,
   Deadline,
@@ -181,7 +182,7 @@ export namespace NIP13 {
                  + '-' + name
                  + '-' + source.source
                  + '-' + operators.map((p) => p.address.plain()).join(',')
-      SHA3Hasher.func(hash, data, 64)
+      SHA3Hasher.func(hash, Convert.utf8ToUint8(data), 64)
 
       // 4 left-most bytes for the mosaic nonce
       const left4b = parseInt(hash.slice(0, 4).join(''), 16)

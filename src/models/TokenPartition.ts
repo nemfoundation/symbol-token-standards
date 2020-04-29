@@ -15,6 +15,7 @@
  */
 import {
   Account,
+  Convert,
   MosaicId,
   MosaicNonce,
   PublicAccount,
@@ -71,7 +72,7 @@ export class TokenPartition {
     // prepare deterministic identifier
     const hash = new Uint8Array(64)
     const data = this.owner.address.plain()
-    SHA3Hasher.func(hash, data, 64)
+    SHA3Hasher.func(hash, Convert.utf8ToUint8(data), 64)
 
     // 8 left-most bytes for partition id
     const left8b = parseInt(hash.slice(0, 8).join(''), 16)

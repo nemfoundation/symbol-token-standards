@@ -130,10 +130,8 @@ export abstract class AbstractCommand extends BaseCommand {
     const mosaicHttp   = this.context.factoryHttp.createMosaicRepository()
     const accountHttp  = this.context.factoryHttp.createAccountRepository()
 
-    // read multisig
-    const graph = await multisigHttp.getMultisigAccountGraphInfo(target).toPromise()
-
     // consolidate/reduce graph
+    const graph = await multisigHttp.getMultisigAccountGraphInfo(target).toPromise()
     this.operators = multisig.getMultisigAccountInfoFromGraph(graph)
 
     // read mosaic

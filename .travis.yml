@@ -7,8 +7,7 @@ cache:
 before_script:
   - npm run build
 script:
-  - npm run test:cov
-  - npm run coveralls-report
+  - npm run test
   - CURRENT_VERSION=$(npm run version --silent)
   - npx typedoc --out "ts-docs/$CURRENT_VERSION" src
   - touch ./ts-docs/.nojekyll

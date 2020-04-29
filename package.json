@@ -25,6 +25,8 @@
     "nyc": "^14.1.1",
     "rimraf": "^3.0.2",
     "ts-node": "^7.0.0",
+    "typedoc": "^0.15.0",
+    "typemoq": "^2.1.0",
     "typescript": "^3.8.3"
   },
   "scripts": {

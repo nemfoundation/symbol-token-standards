@@ -19,7 +19,7 @@ import {describe, it} from 'mocha'
 
 // internal dependencies
 import { getTestAccount } from '../mocks/index'
-import { CommandOption, Context } from '../../src/index'
+import { CommandOption, Context } from '../../index'
 import { Deadline, NetworkType, RepositoryFactoryHttp } from 'symbol-sdk'
 
 const context = new Context(

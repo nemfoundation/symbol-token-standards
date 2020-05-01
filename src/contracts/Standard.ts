@@ -32,7 +32,7 @@ import {
   TokenPartition,
   TokenRestriction,
   TokenSource,
-} from '../index'
+} from '../../index'
 
 /**
  * @interface Standard

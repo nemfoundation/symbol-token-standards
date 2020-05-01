@@ -21,7 +21,7 @@ import {
 } from 'symbol-sdk'
 
 // internal dependencies
-import { TransactionsHelpers } from '../../../index'
+import { TransactionsHelpers } from '../../../../index'
 import { AbstractCommand } from './AbstractCommand'
 import { TokenPartition } from '../../../models/TokenPartition'
 

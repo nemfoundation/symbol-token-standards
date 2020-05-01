@@ -33,7 +33,7 @@ import {
   TokenIdentifier,
   TransactionsHelpers,
   TokenPartition,
-} from '../../../index'
+} from '../../../../index'
 import { MultisigService } from '../services/MultisigService'
 import { PartitionService } from '../services/PartitionService'
 import { FailureEmptyContract } from '../errors/FailureEmptyContract'

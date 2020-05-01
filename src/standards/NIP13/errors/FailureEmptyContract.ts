@@ -15,7 +15,7 @@
  */
 
 // internal dependencies
-import { FailureCommandExecution } from '../../../index'
+import { FailureCommandExecution } from '../../../../index'
 
 /**
  * @class FailureEmptyContract

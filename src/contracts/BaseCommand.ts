@@ -27,7 +27,7 @@ import {
   CommandOption,
   Context,
   FailureOperationForbidden,
-} from '../index'
+} from '../../index'
 import { FailureMissingArgument } from '../errors/FailureMissingArgument'
 import { TokenIdentifier } from '../models/TokenIdentifier'
 

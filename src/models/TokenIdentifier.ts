@@ -21,7 +21,7 @@ import {
 } from 'symbol-sdk'
 
 // internal dependencies
-import { TokenSource } from '../index'
+import { TokenSource } from './TokenSource'
 
 /**
  * @class TokenIdentifier

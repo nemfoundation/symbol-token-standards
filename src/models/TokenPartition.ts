@@ -25,9 +25,6 @@ import {
 } from 'symbol-sdk'
 import { Wallet } from 'symbol-hd-wallets'
 
-// internal dependencies
-import { TokenSource } from '../index'
-
 /**
  * @class TokenPartition
  * @package models
@@ -90,7 +87,7 @@ export class TokenPartition {
     networkType: NetworkType,
   ): Account {
     return keyProvider.getChildAccount(
-      `m/44'/4343'/${this.id}'/0'/0'`, // XXX refactor me
+      `m/44'/4343'/131313'/0'/${this.id}'`, // XXX refactor me
       networkType,
     )
   }

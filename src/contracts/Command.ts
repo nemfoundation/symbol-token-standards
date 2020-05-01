@@ -20,7 +20,7 @@ import { TransactionURI } from 'symbol-uri-scheme'
 import {
   AllowanceResult,
   CommandOption,
-} from '../index'
+} from '../../index'
 
 /**
  * @interface Command

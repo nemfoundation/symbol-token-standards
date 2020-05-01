@@ -30,7 +30,7 @@ import {
   Service,
   TokenPartition,
   TokenIdentifier,
-} from '../../../index'
+} from '../../../../index'
 
 /**
  * @class PartitionService

@@ -18,7 +18,7 @@ import {expect} from 'chai'
 import {describe, it} from 'mocha'
 
 // internal dependencies
-import * as Lib from '../src/index'
+import * as Lib from '../index'
 
 describe('main should', () => {
   it('export NIP13 standard', () => {

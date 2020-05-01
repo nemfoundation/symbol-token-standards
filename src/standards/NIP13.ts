@@ -51,7 +51,7 @@ import {
   TokenSource,
   Context,
   DerivationHelpers,
-} from '../index'
+} from '../../index'
 import { AbstractCommand } from './NIP13/commands/AbstractCommand'
 
 export namespace NIP13 {

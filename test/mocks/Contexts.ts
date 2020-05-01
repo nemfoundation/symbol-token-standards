@@ -21,7 +21,7 @@ import {
 
 // internal dependencies
 import { getTestAccount } from './Accounts'
-import { Context } from '../../src/index'
+import { Context } from '../../index'
 
 export const getTestContext = (
   nodeUrl: string,

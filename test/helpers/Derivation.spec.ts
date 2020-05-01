@@ -18,7 +18,7 @@ import { expect } from 'chai'
 import { describe, it } from 'mocha'
 
 // internal dependencies
-import { DerivationHelpers } from '../../src/index'
+import { DerivationHelpers } from '../../index'
 
 describe('helpers/Derivation --->', () => {
   describe('isValidPath() should', () => {

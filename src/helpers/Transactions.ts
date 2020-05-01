@@ -39,7 +39,7 @@ import {
 } from 'symbol-sdk'
 
 // internal dependencies
-import { Context } from '../index'
+import { Context } from '../../index'
 
 /**
  * @namespace Transactions

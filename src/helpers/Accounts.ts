@@ -28,7 +28,7 @@ import {
 // internal dependencies
 import {
   DerivationHelpers,
-} from '../index'
+} from '../../index'
 
 /**
  * @namespace Accounts

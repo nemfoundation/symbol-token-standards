@@ -20,7 +20,7 @@ import { Crypto, Password } from 'symbol-sdk'
 
 // internal dependencies
 import { getTestMnemonic } from '../mocks/index'
-import { AccountsHelpers } from '../../src/index'
+import { AccountsHelpers } from '../../index'
 import { MnemonicPassPhrase } from 'symbol-hd-wallets'
 
 // prepare

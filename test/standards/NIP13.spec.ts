@@ -20,7 +20,7 @@ import { NetworkType } from 'symbol-sdk'
 
 // internal dependencies
 import { getTestMnemonic } from '../mocks/index'
-import { NIP13 } from '../../src/index'
+import { NIP13 } from '../../index'
 
 // prepare
 const mnemonic = getTestMnemonic()

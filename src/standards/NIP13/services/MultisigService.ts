@@ -19,7 +19,7 @@ import {
 } from 'symbol-sdk'
 
 // internal dependencies
-import { Service } from '../../../index'
+import { Service } from '../../../../index'
 
 /**
  * @class MultisigService

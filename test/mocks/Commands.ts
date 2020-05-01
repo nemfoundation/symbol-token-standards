@@ -25,7 +25,7 @@ import {
   AllowanceResult,
   BaseCommand,
   CommandOption,
-} from '../../src/index'
+} from '../../index'
 
 export class FakeCommand extends BaseCommand {
 

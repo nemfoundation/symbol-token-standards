@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 // internal dependencies
-import { Context } from '../index'
+import { Context } from '../../index'
 
 /**
  * @class Service

@@ -17,7 +17,7 @@
 // internal dependencies
 import {
   FailureInvalidDerivationPath,
-} from '../index'
+} from '../../index'
 
 /**
  * @namespace Derivation

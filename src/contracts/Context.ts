@@ -24,7 +24,7 @@ import {
 // internal dependencies
 import {
   CommandOption,
-} from '../index'
+} from '../../index'
 
 /**
  * @class AbstractCommand

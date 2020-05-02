@@ -21,6 +21,7 @@ import {
   MosaicRestrictionType,
   PublicAccount,
   Transaction,
+  NamespaceId,
 } from 'symbol-sdk'
 
 // internal dependencies
@@ -38,10 +39,11 @@ import { AbstractCommand } from './AbstractCommand'
  *   - Transaction 03: NamespaceRegistrationtTransaction
  *   - Transaction 04: MosaicDefinitionTransaction
  *   - Transaction 05: MosaicSupplyChangeTransaction
- *   - Transaction 06: AccountMosaicRestrictionTransaction with MosaicId = mosaicId to allow mosaic for TARGET account
- *   - Transaction 07: AccountMosaicRestrictionTransaction with MosaicId = feeMosaicId to allow paying fees for TARGET account
- *   - Transaction 08: MosaicGlobalRestriction with mosaicId (refId 0) (User_Role <= 2)
- *   - Transaction 09: MosaicAddressRestriction for target account (User_Role = Target)
+ *   - Transaction 06: MosaicAliasTransaction
+ *   - Transaction 07: AccountMosaicRestrictionTransaction with MosaicId = mosaicId to allow mosaic for TARGET account
+ *   - Transaction 08: AccountMosaicRestrictionTransaction with MosaicId = feeMosaicId to allow paying fees for TARGET account
+ *   - Transaction 09: MosaicGlobalRestriction with mosaicId (refId 0) (User_Role <= 2)
+ *   - Transaction 10: MosaicAddressRestriction for target account (User_Role = Target)
  *
  * :note: `Transaction 03` represents the root namespace registration transaction. Any sub namespace registration
  * transaction will be automatically added to this list.
@@ -167,8 +169,8 @@ export class CreateToken extends AbstractCommand {
     // Transaction 04 is issued by **target** account (multisig)
     signers.push(this.target)
 
-    // Transaction 05: MosaicSupplyChangeTransaction
     if (0 < supply) {
+      // Transaction 05: MosaicSupplyChangeTransaction
       transactions.push(TransactionsHelpers.createMosaicSupplyChange(
         this.context,
         supply,
@@ -180,27 +182,37 @@ export class CreateToken extends AbstractCommand {
       signers.push(this.target)
     }
 
-    // Transaction 06: AccountMosaicRestrictionTransaction with MosaicId = mosaicId
+    // Transaction 06: MosaicAliasTransaction
+    transactions.push(TransactionsHelpers.createMosaicAlias(
+      this.context,
+      new NamespaceId(fullName),
+      mosaicId,
+    ))
+
+    // Transaction 06 is issued by **target** account (multisig)
+    signers.push(this.target)
+
+    // Transaction 07: AccountMosaicRestrictionTransaction with MosaicId = mosaicId
     transactions.push(TransactionsHelpers.createAccountMosaicRestriction(
       this.context,
       [mosaicId],
       // flags=Allow_Mosaic
     ))
 
-    // Transaction 06 is issued by **target** account (multisig)
+    // Transaction 07 is issued by **target** account (multisig)
     signers.push(this.target)
 
-    // Transaction 07: AccountMosaicRestrictionTransaction with MosaicId = NETWORK_FEE_MOSAIC_ID
+    // Transaction 08: AccountMosaicRestrictionTransaction with MosaicId = NETWORK_FEE_MOSAIC_ID
     transactions.push(TransactionsHelpers.createAccountMosaicRestriction(
       this.context,
       [this.context.network.feeMosaicId],
       // flags=Allow_Mosaic
     ))
 
-    // Transaction 07 is issued by **target** account (multisig)
+    // Transaction 08 is issued by **target** account (multisig)
     signers.push(this.target)
 
-    // Transaction 08: MosaicGlobalRestriction with mosaicId (refId 0)
+    // Transaction 09: MosaicGlobalRestriction with mosaicId (refId 0)
     // :warning: This restricts the **mosaic** to accounts who have the 
     //           'User_Role' flag set to at least 2 ("Holder" | "Target").
     transactions.push(TransactionsHelpers.createMosaicGlobalRestriction(
@@ -211,10 +223,10 @@ export class CreateToken extends AbstractCommand {
       2, // 1 = Target ; 2 = Holder ; 3 = Guest ; 4 = Locked
     ))
 
-    // Transaction 08 is issued by **target** account (multisig)
+    // Transaction 09 is issued by **target** account (multisig)
     signers.push(this.target)
 
-    // Transaction 09: MosaicAddressRestriction for target address
+    // Transaction 10: MosaicAddressRestriction for target address
     transactions.push(TransactionsHelpers.createMosaicAddressRestriction(
       this.context,
       mosaicId,
@@ -223,7 +235,7 @@ export class CreateToken extends AbstractCommand {
       1, // 1 = Target
     ))
 
-    // Transaction 09 is issued by the target account
+    // Transaction 10 is issued by the target account
     signers.push(this.target)
 
     // return transactions issued by assigned signer

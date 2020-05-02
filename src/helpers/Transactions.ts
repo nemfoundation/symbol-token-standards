@@ -36,7 +36,8 @@ import {
   PublicAccount,
   TransferTransaction,
   UInt64,
-  Deadline,
+  MosaicAliasTransaction,
+  AliasAction,
 } from 'symbol-sdk'
 
 // internal dependencies
@@ -212,6 +213,26 @@ export namespace Transactions {
       UInt64.fromUint(value), // newRestrictionValue
       context.network.networkType,
       undefined,
+      context.parameters.maxFee,
+    )
+  }
+
+  /**
+   * @function NIP13.Transactions.createMosaicAlias()
+   * @description Helper function to create a mosaic alias transaction.
+   * @link https://nemtech.github.io/concepts/namespace.html#mosaic-alias-transaction
+   */
+  export const createMosaicAlias = (
+    context: Context,
+    namespaceId: NamespaceId,
+    mosaicId: MosaicId,
+  ): MosaicAliasTransaction => {
+    return MosaicAliasTransaction.create(
+      context.parameters.deadline,
+      AliasAction.Link,
+      namespaceId,
+      mosaicId,
+      context.network.networkType,
       context.parameters.maxFee,
     )
   }

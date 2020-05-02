@@ -57,27 +57,30 @@ export namespace NIP13 {
    * @type NIP13.CommandFn
    * @package standards
    * @since v0.1.0
+   * @internal
    * @description Type that describes NIP13 token command functions
    */
-  export type CommandFn = (c: Context, i: TokenIdentifier, k: Wallet) => Command
-
-  /**
-   * @type NIP13.TokenMetadata
-   * @package standards
-   * @since v0.3.3
-   * @description Type that describes NIP13 token metadata
-   */
-  export type TokenMetadata = SecuritiesMetadata
+  type CommandFn = (c: Context, i: TokenIdentifier, k: Wallet) => Command
 
   /**
    * @type NIP13.CommandsList
    * @package standards
    * @since v0.1.0
+   * @internal
    * @description Type that describes NIP13 token command lists
    */
-  export type CommandsList = {
+  type CommandsList = {
     [id: string]: CommandFn
   }
+
+  /**
+   * @type NIP13.TokenMetadata
+   * @package standards
+   * @since v0.3.3
+   * @description Class that describes NIP13 token metadata
+   * @see {SecuritiesMetadata}
+   */
+  export class TokenMetadata extends SecuritiesMetadata {}
 
   /**
    * @var NIP13.TokenCommands

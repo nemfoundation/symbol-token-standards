@@ -18,8 +18,6 @@ import { TransactionURI } from 'symbol-uri-scheme'
 
 // internal dependencies
 import {
-  AccountMetadata,
-  AccountRestriction,
   AllowanceResult,
   Command,
   CommandOption,
@@ -27,9 +25,6 @@ import {
   Notification,
   NotificationProof,
   TokenIdentifier,
-  TokenMetadata,
-  TokenPartition,
-  TokenRestriction,
   NetworkConfig,
   TransactionParameters,
 } from '../../index'
@@ -138,42 +133,4 @@ export interface Standard {
     command: string,
     context: Context,
   ): Command
-
-  /**
-   * Read operators of a token.
-   * 
-   * @param   {PublicAccount}         target
-   * @return  {Array<PublicAccount>}
-   **/
-  getOperators(
-    target: PublicAccount,
-  ): PublicAccount[]
-
-  /**
-   * Read metadata of a previously created Security Token with identifier `tokenId`.
-   * 
-   * @param   {TokenIdentifier}       tokenId
-   * @return  {Array<TokenMetadata>}
-   **/
-  getMetadata(
-    tokenId: TokenIdentifier,
-  ): [TokenMetadata|AccountMetadata]
-
-  /**
-   * Read restrictions of a previously created Security Token with identifier `tokenId`.
-   * 
-   * @param   {TokenIdentifier}       tokenId
-   * @param   {PublicAccount|undefined}     account (Optional)
-   * @return  {Array<TokenRestriction|AccountRestriction>}
-   **/
-  getRestrictions(
-    tokenId: TokenIdentifier,
-    account: PublicAccount|undefined,
-  ): [TokenRestriction|AccountRestriction]
-
-  // XXX getOperators
-  // XXX addOperator
-  // XXX getPartitions
-  // XXX setPartitions
-  // XXX addPartition
 }

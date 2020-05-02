@@ -34,8 +34,6 @@ import {
 import { NIP13 as CommandsImpl } from './NIP13/index'
 import {
   Accountable,
-  AccountMetadata,
-  AccountRestriction,
   AllowanceResult,
   Command,
   CommandOption,
@@ -43,19 +41,14 @@ import {
   NetworkConfig,
   Notification,
   NotificationProof,
-  PublicationProof,
   Standard,
   TokenIdentifier,
-  TokenMetadata,
   TokenPartition,
-  TokenRestriction,
-  TokenRestrictionType,
   TokenSource,
   Context,
   DerivationHelpers,
+  TransactionParameters,
 } from '../../index'
-import { AbstractCommand } from './NIP13/commands/AbstractCommand'
-import { TransactionParameters } from '../models/TransactionParameters'
 import { SecuritiesMetadata } from './NIP13/models/SecuritiesMetadata'
 
 export namespace NIP13 {
@@ -67,6 +60,14 @@ export namespace NIP13 {
    * @description Type that describes NIP13 token command functions
    */
   export type CommandFn = (c: Context, i: TokenIdentifier, k: Wallet) => Command
+
+  /**
+   * @type NIP13.TokenMetadata
+   * @package standards
+   * @since v0.3.3
+   * @description Type that describes NIP13 token metadata
+   */
+  export type TokenMetadata = SecuritiesMetadata
 
   /**
    * @type NIP13.CommandsList
@@ -209,7 +210,7 @@ export namespace NIP13 {
      * @param   {TokenIdentifier}       tokenId
      * @param   {TokenPartition[]}      partitions (Optional) partitions records
      * @param   {TransactionParameters} parameters
-     * @return  {PublicationProof}
+     * @return  {TransactionURI}
      **/
     public publish(
       actor: PublicAccount,
@@ -272,7 +273,6 @@ export namespace NIP13 {
       command: string,
       argv: CommandOption[]
     ): AllowanceResult {
-      try {
       // instanciate command and context
       const params = new TransactionParameters()
       const context = this.getContext(actor, params, argv)
@@ -280,10 +280,6 @@ export namespace NIP13 {
 
       // use `canExecute` for token command
       return cmdFn.canExecute(actor, argv)
-      } catch (f) {
-        // XXX error notifications / events
-        throw f
-      }
     }
 
     /**
@@ -359,44 +355,6 @@ export namespace NIP13 {
       }
 
       return TokenCommands[command](context, tokenId, this.keyProvider)
-    }
-
-    /**
-     * Read operators of a previously created Security Token with identifier `tokenId`.
-     * 
-     * @param   {PublicAccount}         target
-     * @return  {Array<PublicAccount>}
-     **/
-    public getOperators(
-      target: PublicAccount,
-    ): PublicAccount[] {
-      return []
-    }
-
-    /**
-     * Read metadata of a previously created Security Token with identifier `tokenId`.
-     * 
-     * @param   {TokenIdentifier}       tokenId
-     * @return  {Array<TokenMetadata|AccountMetadata>}
-     **/
-    public getMetadata(
-      tokenId: TokenIdentifier
-    ): [TokenMetadata|AccountMetadata] {
-      return [new TokenMetadata(tokenId, 'dummy', '')]
-    }
-
-    /**
-     * Read restrictions of a previously created Security Token with identifier `tokenId`.
-     * 
-     * @param   {TokenIdentifier}       tokenId
-     * @param   {PublicAccount|undefined}     account (Optional)
-     * @return  {Array<TokenRestriction|AccountRestriction>}
-     **/
-    getRestrictions(
-      tokenId: TokenIdentifier,
-      account: PublicAccount|undefined
-    ): [TokenRestriction|AccountRestriction] {
-      return [new TokenRestriction(tokenId, TokenRestrictionType.AddressRestriction, 'EQ', 'dummy', '')]
     }
   }
 

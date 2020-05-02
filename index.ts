@@ -48,4 +48,4 @@ export { BaseCommand } from './src/contracts/BaseCommand'
 export { Standard } from './src/contracts/Standard'
 
 // standards
-export { NIP13 } from './src/standards/NIP13'
+export * from './src/standards/NIP13'

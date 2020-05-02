@@ -17,6 +17,10 @@ import {
   AggregateTransaction,
   PublicAccount,
   Transaction,
+  RepositoryFactoryHttp,
+  NetworkType,
+  Deadline,
+  UInt64,
 } from 'symbol-sdk'
 import { TransactionURI } from 'symbol-uri-scheme'
 
@@ -30,6 +34,7 @@ import {
 } from '../../index'
 import { FailureMissingArgument } from '../errors/FailureMissingArgument'
 import { TokenIdentifier } from '../models/TokenIdentifier'
+import { TransactionParameters } from '../models/TransactionParameters'
 
 /**
  * @class BaseCommand
@@ -49,12 +54,7 @@ export abstract class BaseCommand implements Command {
     /**
      * @description Execution context
      */
-    protected readonly context: Context,
-
-    /**
-     * @description Token identifier
-     */
-    protected readonly identifier: TokenIdentifier,
+    public readonly context: Context,
   ) {
     this.synchronize()
   }
@@ -93,8 +93,8 @@ export abstract class BaseCommand implements Command {
    * Execute the command with `actor` operator account. Arguments to
    * the command execution can be passed in `argv`.
    *
-   * @param   {PublicAccount}         actor
-   * @param   {Array<CommandOption>}   argv
+   * @param   {PublicAccount}           actor
+   * @param   {Array<CommandOption>}    argv
    * @return  {TransactionURI}
    **/
   public abstract execute(

@@ -20,6 +20,7 @@ import { TransactionURI } from 'symbol-uri-scheme'
 import {
   AllowanceResult,
   CommandOption,
+  Context,
 } from '../../index'
 
 /**
@@ -30,8 +31,15 @@ import {
  * @link https://github.com/nemtech/NIP/blob/master/NIPs/nip-0013.md#token-commands
  */
 export interface Command {
-
+  /**
+   * @description The command name
+   */
   readonly name: string
+
+  /**
+   * @description The command execution context
+   */
+  readonly context: Context
 
   /**
    * Synchronize the command execution with the network. This method shall
@@ -59,8 +67,8 @@ export interface Command {
    * Execute the command with `actor` operator account. Arguments to
    * the command execution can be passed in `argv`.
    *
-   * @param   {PublicAccount}         actor
-   * @param   {Array<CommandOption>}   argv
+   * @param   {PublicAccount}           actor
+   * @param   {Array<CommandOption>}    argv
    * @return  {TransactionURI}
    **/
   execute(

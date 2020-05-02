@@ -13,17 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import {
-  Deadline,
-  NetworkType,
-  PublicAccount,
-  UInt64,
-  RepositoryFactoryHttp,
-} from 'symbol-sdk'
+import { PublicAccount } from 'symbol-sdk'
 
 // internal dependencies
 import {
   CommandOption,
+  NetworkConfig,
+  TransactionParameters,
 } from '../../index'
 
 /**
@@ -46,24 +42,14 @@ export class Context {
     public actor: PublicAccount,
 
     /**
-     * @description Repository factory (symbol-sdk)
+     * @description Network configuration
      */
-    public factoryHttp: RepositoryFactoryHttp,
+    public network: NetworkConfig,
 
     /**
-     * @description Network type
+     * @description Transaction parameters
      */
-    public networkType: NetworkType = NetworkType.TEST_NET,
-
-    /**
-     * @description Deadline for execution
-     */
-    public deadline: Deadline = Deadline.create(),
-
-    /**
-     * @description Max paid fee
-     */
-    public maxFee: UInt64 = UInt64.fromUint(30000),
+    public parameters: TransactionParameters,
 
     /**
      * @description Execution parameters

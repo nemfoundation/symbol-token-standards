@@ -64,7 +64,7 @@ export namespace Accounts {
    */
   export const createAccount = (
     mnemonic: MnemonicPassPhrase,
-    path: string = DerivationHelpers.DEFAULT_HDPATH,
+    path: string,
     password?: Password,
     networkType: NetworkType = NetworkType.TEST_NET
   ): Account => {
@@ -83,10 +83,11 @@ export namespace Accounts {
   /**
    * @function NIP13.Accounts.createAccounts()
    * @description Helper function to create and derive multiple accounts
-   *              from a mnemonic pass phrase and derivation paths.
+   *              from a mnemonic pass phrase and start derivation paths.
    */
   export const createAccounts = (
     mnemonic: MnemonicPassPhrase,
+    startPath: string,
     size: number = 1,
     password?: Password,
     networkType: NetworkType = NetworkType.TEST_NET
@@ -103,7 +104,7 @@ export namespace Accounts {
 
     // get `size` number of derivation paths to be derived
     const paths = DerivationHelpers.getPaths(
-      DerivationHelpers.DEFAULT_HDPATH, 
+      startPath, 
       size
     )
 

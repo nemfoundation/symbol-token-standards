@@ -214,24 +214,24 @@ describe('helpers/Derivation --->', () => {
   describe('getPaths() should', () => {
     it('use NIP13 default path given no parameters', () => {
       // act
-      const paths = DerivationHelpers.getPaths()
+      const paths = DerivationHelpers.getPaths(DerivationHelpers.PATH_NIP13)
 
       // assert
       expect(paths).to.not.be.undefined
       expect(paths.length).to.be.equal(1)
-      expect(paths[0]).to.be.equal(DerivationHelpers.DEFAULT_HDPATH)
+      expect(paths[0]).to.be.equal(DerivationHelpers.PATH_NIP13)
     })
 
     it('increment paths based on address path level', () => {
       // act
-      const paths = DerivationHelpers.getPaths(undefined, 3)
+      const paths = DerivationHelpers.getPaths(DerivationHelpers.PATH_NIP13, 3)
 
       // assert
       expect(paths).to.not.be.undefined
       expect(paths.length).to.be.equal(3)
-      expect(paths[0]).to.be.equal("m/44'/4343'/131313'/0'/0'")
-      expect(paths[1]).to.be.equal("m/44'/4343'/131313'/0'/1'")
-      expect(paths[2]).to.be.equal("m/44'/4343'/131313'/0'/2'")
+      expect(paths[0]).to.be.equal("m/44'/4343'/1313'/0'/0'")
+      expect(paths[1]).to.be.equal("m/44'/4343'/1313'/0'/1'")
+      expect(paths[2]).to.be.equal("m/44'/4343'/1313'/0'/2'")
     })
 
     it('accept custom start path (BIP44+Symbol compliant)', () => {

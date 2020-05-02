@@ -20,18 +20,19 @@ import { Crypto, Password } from 'symbol-sdk'
 
 // internal dependencies
 import { getTestMnemonic } from '../mocks/index'
-import { AccountsHelpers } from '../../index'
+import { AccountsHelpers, DerivationHelpers } from '../../index'
 import { MnemonicPassPhrase } from 'symbol-hd-wallets'
+import { Derivation } from '../../src/helpers/Derivation'
 
 // prepare
 const mnemonic = getTestMnemonic()
-const account = AccountsHelpers.createAccount(mnemonic)
+const account = AccountsHelpers.createAccount(mnemonic, DerivationHelpers.PATH_NIP13)
 const addresses = {
-  defaultNIP13_0: 'TC2FSWC466WFRJBLTE7GZBFGFSISSSWMJLOSSVWN', // m/44'/4343'/131313'/0'/0'
-  defaultNIP13_1: 'TAXWYALHO5Y3YC4HMJXVBL5UVART7UGOLDVUAMWF', // m/44'/4343'/131313'/1'/0'
-  defaultNIP13_2: 'TBQHX4WVYSCILYB6MC6MU47ZST5HLOMCWG2RIB5Z', // m/44'/4343'/131313'/2'/0'
-  passwordNIP13: 'TB6YJBJUMPBLD2AU5OPUAYGLAN4WU6Q7STJHVTOK',
-  customPath: 'TB7IMNOYR72HUBNVJYXF44AKCAVP6EN3FNIEPTV2', // m/44'/4343'/131313'/123456'/0'
+  defaultNIP13_0: 'TDEE6S3YUMS6A37XSW3JB7VPT7QTMYCYKDUACQU4', // m/44'/4343'/1313'/0'/0'
+  defaultNIP13_1: 'TBCT2ESMYBAPZNCSOZRPXKW4TRP73XHOMQTA7OIT', // m/44'/4343'/1313'/1'/0'
+  defaultNIP13_2: 'TBV6MGO3SH6UN3W4BQ5SCGGHLYB4OAF6PUPIRN2T', // m/44'/4343'/1313'/2'/0'
+  passwordNIP13: 'TCNZA2YV7JJWP7GW4CAXLDREFVA2V37VKDDLOAQA', // m/44'/4343'/1313'/0'/0' password protected with `password`
+  customPath: 'TBF67NYSRA3SFIWHW46M3B2MHBIEV6MK2VJIGGKK', // m/44'/4343'/1313'/123456'/0'
 }
 
 describe('helpers/Accounts --->', () => {
@@ -67,7 +68,7 @@ describe('helpers/Accounts --->', () => {
       // act
       const account2 = AccountsHelpers.createAccount(
         mnemonic,
-        undefined, // use default path
+        DerivationHelpers.PATH_NIP13,
         new Password("password"),
       )
 
@@ -80,7 +81,7 @@ describe('helpers/Accounts --->', () => {
       // act
       const account2 = AccountsHelpers.createAccount(
         mnemonic,
-        `m/44'/4343'/131313'/123456'/0'`,
+        `m/44'/4343'/1313'/123456'/0'`,
       )
 
       // assert
@@ -91,7 +92,7 @@ describe('helpers/Accounts --->', () => {
 
   describe('createAccounts() should', () => {
     // prepare
-    const accounts = AccountsHelpers.createAccounts(mnemonic, 3)
+    const accounts = AccountsHelpers.createAccounts(mnemonic, DerivationHelpers.PATH_NIP13, 3)
 
     it('use default NIP13 derivation path', () => {
       // assert
@@ -104,6 +105,7 @@ describe('helpers/Accounts --->', () => {
       // act
       const account2 = AccountsHelpers.createAccounts(
         mnemonic,
+        DerivationHelpers.PATH_NIP13,
         1,
         new Password("password"),
       )[0]

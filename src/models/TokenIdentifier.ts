@@ -41,7 +41,7 @@ export class TokenIdentifier {
     /**
      * @description The token identifier
      */
-    public id: UInt64,
+    public id: string,
 
     /**
      * @description The token source
@@ -62,7 +62,7 @@ export class TokenIdentifier {
    * @return {MosaicNonce}
    */
   public get nonce(): MosaicNonce {
-    return MosaicNonce.createFromHex(this.id.toHex())
+    return MosaicNonce.createFromHex(this.id)
   }
 
   /**

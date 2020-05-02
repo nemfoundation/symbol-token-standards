@@ -27,6 +27,7 @@ export { AccountMetadata } from './src/models/AccountMetadata'
 export { AccountRestriction } from './src/models/AccountRestriction'
 export { AllowanceResult } from './src/models/AllowanceResult'
 export { CommandOption } from './src/models/CommandOption'
+export { NetworkConfig } from './src/models/NetworkConfig'
 export { Notification } from './src/models/Notification'
 export { NotificationProof } from './src/models/NotificationProof'
 export { Operator } from './src/models/Operator'
@@ -37,6 +38,7 @@ export { TokenPartition } from './src/models/TokenPartition'
 export { TokenRestriction } from './src/models/TokenRestriction'
 export { TokenRestrictionType } from './src/models/TokenRestrictionType'
 export { TokenSource } from './src/models/TokenSource'
+export { TransactionParameters } from './src/models/TransactionParameters'
 
 // helpers
 export { Accounts as AccountsHelpers } from './src/helpers/Accounts'
@@ -44,6 +46,7 @@ export { Derivation as DerivationHelpers } from './src/helpers/Derivation'
 export { Transactions as TransactionsHelpers } from './src/helpers/Transactions'
 
 // contracts
+export { Accountable } from './src/contracts/Accountable'
 export { Context } from './src/contracts/Context'
 export { Command } from './src/contracts/Command'
 export { Service } from './src/contracts/Service'

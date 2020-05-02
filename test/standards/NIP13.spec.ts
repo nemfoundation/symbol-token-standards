@@ -16,20 +16,25 @@
 
 import { expect } from 'chai'
 import { describe, it } from 'mocha'
-import { NetworkType } from 'symbol-sdk'
+import { MosaicId, NetworkType } from 'symbol-sdk'
 
 // internal dependencies
 import { getTestMnemonic } from '../mocks/index'
 import { NIP13 } from '../../index'
+import { NetworkConfig } from '../../src/models/NetworkConfig'
 
 // prepare
 const mnemonic = getTestMnemonic()
 const token = new NIP13.Token(
-  'http://api-01.us-west-1.symboldev.network:3000',
-  NetworkType.TEST_NET,
+  new NetworkConfig(
+    'http://api-01.us-west-1.symboldev.network:3000',
+    NetworkType.TEST_NET,
+    'ACECD90E7B248E012803228ADB4424F0D966D24149B72E58987D2BF2F2AF03C4',
+    new MosaicId('519FC24B9223E0B4'),
+  ),
   mnemonic,
 )
-const defaultNIP13 = 'TC2FSWC466WFRJBLTE7GZBFGFSISSSWMJLOSSVWN' // m/44'/4343'/131313'/0'/0'
+const defaultNIP13 = 'TDEE6S3YUMS6A37XSW3JB7VPT7QTMYCYKDUACQU4' // m/44'/4343'/1313'/0'/0'
 
 describe('NIP13 Standard --->', () => {
   it('Revision should be 1', () => {

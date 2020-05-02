@@ -20,25 +20,39 @@ import {describe, it} from 'mocha'
 // internal dependencies
 import { getTestAccount } from '../mocks/index'
 import { CommandOption, Context } from '../../index'
-import { Deadline, NetworkType, RepositoryFactoryHttp } from 'symbol-sdk'
+import { Deadline, NetworkType, RepositoryFactoryHttp, MosaicId } from 'symbol-sdk'
+import { NetworkConfig } from '../../src/models/NetworkConfig'
+import { TransactionParameters } from '../../src/models/TransactionParameters'
 
 const context = new Context(
   1,
   getTestAccount('operator1'),
-  new RepositoryFactoryHttp('http://api-01.us-west-1.symboldev.network:3000', NetworkType.TEST_NET),
-  getTestAccount('operator1').address.networkType,
-  Deadline.create(),
-  undefined,
-  undefined,
+  new NetworkConfig(
+    'http://api-01.us-west-1.0941-v1.symboldev.network',
+    getTestAccount('operator1').address.networkType,
+    'ACECD90E7B248E012803228ADB4424F0D966D24149B72E58987D2BF2F2AF03C4',
+    new MosaicId('519FC24B9223E0B4'),
+  ),
+  new TransactionParameters(
+    Deadline.create(),
+    undefined, // maxFee
+  ),
+  undefined, // argv
 )
 
 const contextWithArgs = new Context(
   1,
   getTestAccount('operator1'),
-  new RepositoryFactoryHttp('http://api-01.us-west-1.symboldev.network:3000', NetworkType.TEST_NET),
-  getTestAccount('operator1').address.networkType,
-  Deadline.create(),
-  undefined,
+  new NetworkConfig(
+    'http://api-01.us-west-1.0941-v1.symboldev.network',
+    getTestAccount('operator1').address.networkType,
+    'ACECD90E7B248E012803228ADB4424F0D966D24149B72E58987D2BF2F2AF03C4',
+    new MosaicId('519FC24B9223E0B4'),
+  ),
+  new TransactionParameters(
+    Deadline.create(),
+    undefined, // maxFee
+  ),
   [new CommandOption('identifier', 'id')],
 )
 

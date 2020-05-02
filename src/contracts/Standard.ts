@@ -26,12 +26,12 @@ import {
   Context,
   Notification,
   NotificationProof,
-  PublicationProof,
   TokenIdentifier,
   TokenMetadata,
   TokenPartition,
   TokenRestriction,
-  TokenSource,
+  NetworkConfig,
+  TransactionParameters,
 } from '../../index'
 
 /**
@@ -42,22 +42,27 @@ import {
  */
 export interface Standard {
   /**
+   * @description The network configuration object.
+   */
+  readonly network: NetworkConfig
+
+  /**
    * Creates a new Security Token with pre-defined Symbol feature set.
    *
    * @param   {string}                name
    * @param   {PublicAccount}         actor
    * @param   {PublicAccount}         target
-   * @param   {TokenSource}           source
    * @param   {Array<PublicAccount>}  operators
    * @param   {number}                supply
+   * @param   {TransactionParameters} parameters
    * @return  {TokenIdentifier}
    **/
   create(
     name: string,
     actor: PublicAccount,
-    source: TokenSource,
     operators: PublicAccount[],
     supply: number,
+    parameters: TransactionParameters,
   ): TokenIdentifier
 
   /**
@@ -67,26 +72,30 @@ export interface Standard {
    * @param   {PublicAccount}         actor
    * @param   {TokenIdentifier}       tokenId
    * @param   {TokenPartition[]}      partitions (Optional) partitions records
+   * @param   {TransactionParameters} parameters
    * @return  {TransactionURI}
    **/
   publish(
     actor: PublicAccount,
     tokenId: TokenIdentifier,
     partitions: TokenPartition[],
+    parameters: TransactionParameters,
   ): TransactionURI
 
   /**
    * Notify an account `account` about `notification`
    *
    * @param   {TokenIdentifier} tokenId
-   * @param   {PublicAccount}         account
+   * @param   {PublicAccount}   account
    * @param   {Notification}    notification
+   * @param   {TransactionParameters} parameters
    * @return  {NotificationProof}
    **/
   notify(
     tokenId: TokenIdentifier,
     account: PublicAccount,
     notification: Notification,
+    parameters: TransactionParameters,
   ): NotificationProof
 
   /**
@@ -126,6 +135,7 @@ export interface Standard {
    * @param   {PublicAccount}         actor
    * @param   {TokenIdentifier}       tokenId
    * @param   {string}                command
+   * @param   {TransactionParameters} parameters
    * @param   {Array<CommandOption>}  argv
    * @return  {TransactionURI}
    **/
@@ -133,6 +143,7 @@ export interface Standard {
     actor: PublicAccount,
     tokenId: TokenIdentifier,
     command: string,
+    parameters: TransactionParameters,
     argv: CommandOption[],
   ): TransactionURI
 
@@ -140,16 +151,13 @@ export interface Standard {
    * Gets an execution context
    *
    * @param   {PublicAccount}   actor
-   * @param   {PublicAccount}   target
-   * @param   {Deadline}        deadline
-   * @param   {UInt64}          maxFee
+   * @param   {TransactionParameters} parameters
    * @param   {CommandOption[]} argv
    * @return  {Context}
    **/
   getContext(
     actor: PublicAccount,
-    deadline?: Deadline,
-    maxFee?: UInt64,
+    parameters: TransactionParameters,
     argv?: CommandOption[],
   ): Context
 
@@ -200,6 +208,7 @@ export interface Standard {
   ): [TokenRestriction|AccountRestriction]
 
   // XXX getOperators
+  // XXX addOperator
   // XXX getPartitions
   // XXX setPartitions
   // XXX addPartition

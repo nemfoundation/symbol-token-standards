@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { TransactionURI } from 'symbol-uri-scheme'
 import {
   InnerTransaction,
   Transaction,
@@ -71,13 +70,13 @@ export class TransferOwnership extends AbstractCommand {
     // derive old partition owner multisig
     const oldAccount = partition.deriveAccount(
       this.keyProvider,
-      this.context.networkType,
+     this.context.network.networkType,
     ).publicAccount
 
     // create new partition owner multisig
     const newAccount = (new TokenPartition(partitionName, recipient, amount)).deriveAccount(
       this.keyProvider,
-      this.context.networkType,
+     this.context.network.networkType,
     ).publicAccount
 
     // Transaction 01: MultisigAccountModificationTransaction
@@ -99,7 +98,7 @@ export class TransferOwnership extends AbstractCommand {
       newAccount.address,
       this.identifier.toMosaicId(),
       amount,
-      'NIP13(v' + this.context.revision + '):partition:' + this.identifier.id.toHex()
+      'NIP13(v' + this.context.revision + '):partition:' + this.identifier.id
     ))
 
     // Transaction 01 is issued by **old** partition account (old owner)

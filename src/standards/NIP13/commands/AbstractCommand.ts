@@ -20,7 +20,6 @@ import {
   MultisigAccountInfo,
   PublicAccount,
   Transaction,
-  AccountInfo,
 } from 'symbol-sdk'
 import { Wallet } from 'symbol-hd-wallets'
 
@@ -31,12 +30,12 @@ import {
   CommandOption,
   Context,
   TokenIdentifier,
-  TransactionsHelpers,
   TokenPartition,
 } from '../../../../index'
 import { MultisigService } from '../services/MultisigService'
 import { PartitionService } from '../services/PartitionService'
 import { FailureEmptyContract } from '../errors/FailureEmptyContract'
+import { TransactionParameters } from '../../../models/TransactionParameters'
 
 /**
  * @class NIP13.AbstractCommand
@@ -80,7 +79,7 @@ export abstract class AbstractCommand extends BaseCommand {
     /**
      * @description Execution context
      */
-    protected readonly context: Context,
+    public readonly context: Context,
 
     /**
      * @description Token identifier
@@ -92,7 +91,7 @@ export abstract class AbstractCommand extends BaseCommand {
      */
     public keyProvider: Wallet, 
   ) {
-    super(context, identifier)
+    super(context)
     this.target = this.identifier.target
   }
 
@@ -126,9 +125,9 @@ export abstract class AbstractCommand extends BaseCommand {
     const partitions = new PartitionService(this.context)
 
     // initialize REST
-    const multisigHttp = this.context.factoryHttp.createMultisigRepository()
-    const mosaicHttp   = this.context.factoryHttp.createMosaicRepository()
-    const accountHttp  = this.context.factoryHttp.createAccountRepository()
+    const multisigHttp = this.context.network.factoryHttp.createMultisigRepository()
+    const mosaicHttp   = this.context.network.factoryHttp.createMosaicRepository()
+    const accountHttp  = this.context.network.factoryHttp.createAccountRepository()
 
     // consolidate/reduce graph
     const graph = await multisigHttp.getMultisigAccountGraphInfo(target).toPromise()
@@ -139,7 +138,7 @@ export abstract class AbstractCommand extends BaseCommand {
 
     // read partitions
     this.partitions = await partitions.getPartitionsFromNetwork(
-      this.context.factoryHttp,
+      this.context.network.factoryHttp,
       this.identifier,
       this.operators,
       'NIP13(v' + this.context.revision + '):partition:'
@@ -203,11 +202,11 @@ export abstract class AbstractCommand extends BaseCommand {
 
     // create aggregate bonded
     return AggregateTransaction.createBonded(
-      this.context.deadline,
+      this.context.parameters.deadline,
       this.transactions,
-      this.context.networkType,
+      this.context.network.networkType,
       [],
-      this.context.maxFee,
+      this.context.parameters.maxFee,
     )
   }
 }

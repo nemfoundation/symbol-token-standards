@@ -17,11 +17,12 @@ import {
   Deadline,
   NetworkType,
   RepositoryFactoryHttp,
+  MosaicId,
 } from 'symbol-sdk'
 
 // internal dependencies
 import { getTestAccount } from './Accounts'
-import { Context } from '../../index'
+import { Context, NetworkConfig, TransactionParameters } from '../../index'
 
 export const getTestContext = (
   nodeUrl: string,
@@ -30,10 +31,16 @@ export const getTestContext = (
   return new Context(
     1,
     getTestAccount(actor || 'operator1'),
-    new RepositoryFactoryHttp(nodeUrl, NetworkType.TEST_NET),
-    getTestAccount(actor || 'operator1').address.networkType,
-    Deadline.create(),
-    undefined,
+    new NetworkConfig(
+      nodeUrl,
+      getTestAccount('operator1').address.networkType,
+      'ACECD90E7B248E012803228ADB4424F0D966D24149B72E58987D2BF2F2AF03C4',
+      new MosaicId('519FC24B9223E0B4'),
+    ),
+    new TransactionParameters(
+      Deadline.create(),
+      undefined, // maxFee
+    ),
     undefined,
   )
 }

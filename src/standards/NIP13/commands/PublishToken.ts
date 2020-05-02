@@ -29,6 +29,13 @@ import { TokenPartition } from '../../../models/TokenPartition'
  * @package NIP13 Token Commands
  * @since v0.1.0
  * @description Class that describes a token command for publishing NIP13 compliant tokens.
+ * @summary This token command prepares one aggregate bonded transaction with following inner transactions:
+ *   - Transaction 01: TransferTransaction with NIP13 `PublishToken` command descriptor
+ *   - Transaction 02: MultisigAccountModificationTransaction
+ *   - Transaction 03: AccountMosaicRestrictionTransaction with MosaicId = mosaicId to allow mosaic for PARTITION account
+ *   - Transaction 04: AccountMosaicRestrictionTransaction with MosaicId = feeMosaicId to allow fees for PARTITION account
+ *   - Transaction 05: MosaicAddressRestriction for partition account (User_Role = Holder)
+ *   - Transaction 06: TransferTransaction with NIP13 `TransferOwnership` command descriptor (initial partitioning)
  */
 export class PublishToken extends AbstractCommand {
   /**
@@ -68,7 +75,7 @@ export class PublishToken extends AbstractCommand {
       this.target.address,
       undefined,
       undefined,
-      'NIP13(v' + this.context.revision + '):publish:' + this.identifier.id.toHex()
+      'NIP13(v' + this.context.revision + '):publish:' + this.identifier.id
     ))
 
     // Transaction 01 is issued by **target** account (multisig)
@@ -79,7 +86,7 @@ export class PublishToken extends AbstractCommand {
       const partition = partitions[i] as TokenPartition
       const account = partition.deriveAccount(
         this.keyProvider,
-        this.context.networkType,
+        this.context.network.networkType,
       ).publicAccount
 
       // Transaction 02: MultisigAccountModificationTransaction
@@ -92,10 +99,30 @@ export class PublishToken extends AbstractCommand {
             .concat(partition.owner) // + partition owner
       ))
 
-      // Transaction 02 is issued by partition owner
+      // Transaction 02 is issued by **partition** account (multisig)
       signers.push(account)
 
-      // Transaction 03: MosaicAddressRestriction for partition owner
+      // Transaction 03: AccountMosaicRestrictionTransaction with MosaicId = mosaicId
+      transactions.push(TransactionsHelpers.createAccountMosaicRestriction(
+        this.context,
+        [this.identifier.toMosaicId()],
+        // flags=Allow_Mosaic
+      ))
+
+      // Transaction 03 is issued by **partition** account (multisig)
+      signers.push(account)
+
+      // Transaction 04: AccountMosaicRestrictionTransaction with MosaicId = NETWORK_FEE_MOSAIC_ID
+      transactions.push(TransactionsHelpers.createAccountMosaicRestriction(
+        this.context,
+        [this.context.network.feeMosaicId],
+        // flags=Allow_Mosaic
+      ))
+
+      // Transaction 04 is issued by **partition** account (multisig)
+      signers.push(account)
+
+      // Transaction 05: MosaicAddressRestriction for partition owner
       // :warning: this gives the partition owner Holder access to the token.
       transactions.push(TransactionsHelpers.createMosaicAddressRestriction(
         this.context,
@@ -105,10 +132,10 @@ export class PublishToken extends AbstractCommand {
         2, // 2 = Holder
       ))
 
-      // Transaction 03 is issued by **target** account (multisig)
+      // Transaction 05 is issued by **target** account (multisig)
       signers.push(this.target)
 
-      // Transaction 04: TransferTransaction adding partition label and transferring ownership.
+      // Transaction 06: TransferTransaction adding partition label and transferring ownership.
       transactions.push(TransactionsHelpers.createTransfer(
         this.context,
         account.address,
@@ -117,7 +144,7 @@ export class PublishToken extends AbstractCommand {
         'NIP13(v' + this.context.revision + '):partition:' + partition.name
       ))
 
-      // Transaction 04 is issued by **target** account (multisig)
+      // Transaction 06 is issued by **target** account (multisig)
       signers.push(this.target)
     }
 

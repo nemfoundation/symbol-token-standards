@@ -53,11 +53,11 @@ export class FakeCommand extends BaseCommand {
 
   protected prepare(): AggregateTransaction | Transaction {
     return AggregateTransaction.createBonded(
-      this.context.deadline,
+      this.context.parameters.deadline,
       this.transactions,
-      this.context.networkType,
+      this.context.network.networkType,
       [],
-      this.context.maxFee,
+      this.context.parameters.maxFee,
     )
   }
 

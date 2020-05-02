@@ -33,12 +33,14 @@ import {
 // internal dependencies
 import { NIP13 as CommandsImpl } from './NIP13/index'
 import {
+  Accountable,
   AccountMetadata,
   AccountRestriction,
   AllowanceResult,
   Command,
   CommandOption,
   FailureInvalidCommand,
+  NetworkConfig,
   Notification,
   NotificationProof,
   PublicationProof,
@@ -53,6 +55,7 @@ import {
   DerivationHelpers,
 } from '../../index'
 import { AbstractCommand } from './NIP13/commands/AbstractCommand'
+import { TransactionParameters } from '../models/TransactionParameters'
 
 export namespace NIP13 {
 
@@ -102,7 +105,7 @@ export namespace NIP13 {
    * @description Class that describes NIP13 security tokens standard
    * @link https://github.com/nemtech/NIP/blob/master/NIPs/nip-0013.md
    */
-  export class TokenStandard implements Standard {
+  export class TokenStandard extends Accountable implements Standard {
 
     /**
      * @description The deterministic public account representing the token.
@@ -110,9 +113,9 @@ export namespace NIP13 {
     public target: PublicAccount
 
     /**
-     * @description The key provider for said token.
+     * @description The token source (network generation hash).
      */
-    public keyProvider: Wallet
+    public source: TokenSource
 
     /**
      * @description Last token command execution result. URIs must be executed
@@ -127,33 +130,25 @@ export namespace NIP13 {
      */
     public constructor(
       /**
-       * @description The endpoint URL that will be used to connect.
+       * @description The network configuration
        */
-      public readonly nodeUrl: string,
-
-      /**
-       * @description The endpoint network type.
-       */
-      public readonly networkType: NetworkType,
+      public readonly network: NetworkConfig,
 
       /**
        * @description The BIP39 mnemonic pass phrase used with said token.
        */
-      public readonly bip39: MnemonicPassPhrase
+      protected readonly bip39: MnemonicPassPhrase,
     ) {
-      // initialize key provider
-      this.keyProvider = new Wallet(
-        ExtendedKey.createFromSeed(
-          this.bip39.toSeed().toString('hex'),
-          Network.CATAPULT
-        )
-      )
+      // @see {Accountable}
+      super(network, bip39)
 
       // derive base keys
-      this.target = this.keyProvider.getChildPublicAccount(
-        DerivationHelpers.DEFAULT_HDPATH,
-        this.networkType,
-      )
+      this.target = this.getAccount(
+        DerivationHelpers.PATH_NIP13, // m/44'/4343'/336237441331'/0'/0'
+      ).publicAccount
+
+      // set network configuration
+      this.source = new TokenSource(this.network.generationHash)
     }
 
     /**
@@ -162,17 +157,17 @@ export namespace NIP13 {
      * @param   {string}                name
      * @param   {PublicAccount}         actor
      * @param   {PublicAccount}         target
-     * @param   {TokenSource}           source
      * @param   {Array<PublicAccount>}  operators
      * @param   {number}                supply
+     * @param   {TransactionParameters} parameters
      * @return  {TokenIdentifier}
      **/
     public create(
       name: string,
       actor: PublicAccount,
-      source: TokenSource,
       operators: PublicAccount[],
       supply: number,
+      parameters: TransactionParameters,
     ): TokenIdentifier {
 
       // prepare deterministic token identifier
@@ -180,18 +175,22 @@ export namespace NIP13 {
       const data = this.target.address.plain()
                  + '-' + supply.toString()
                  + '-' + name
-                 + '-' + source.source
+                 + '-' + this.source.source
                  + '-' + operators.map((p) => p.address.plain()).join(',')
       SHA3Hasher.func(hash, Convert.utf8ToUint8(data), 64)
 
       // 4 left-most bytes for the mosaic nonce
-      const left4b = parseInt(hash.slice(0, 4).join(''), 16)
-      const tokenId = new TokenIdentifier(UInt64.fromUint(left4b), source, this.target)
+      const left4b: string = hash.slice(0, 4).reduce(
+        (s, b) => s + b.toString(16).padStart(2, '0'),
+        '', // initialValue
+      )
+
+      const tokenId = new TokenIdentifier(left4b, this.source, this.target)
 
       // execute token command `CreateToken`
-      this.result = this.execute(actor, tokenId, 'CreateToken', [
+      this.result = this.execute(actor, tokenId, 'CreateToken', parameters, [
         new CommandOption('name', name),
-        new CommandOption('source', source),
+        new CommandOption('source', this.source),
         new CommandOption('operators', operators),
         new CommandOption('supply', supply),
       ])
@@ -206,15 +205,17 @@ export namespace NIP13 {
      * @param   {PublicAccount}         actor
      * @param   {TokenIdentifier}       tokenId
      * @param   {TokenPartition[]}      partitions (Optional) partitions records
+     * @param   {TransactionParameters} parameters
      * @return  {PublicationProof}
      **/
     public publish(
       actor: PublicAccount,
       tokenId: TokenIdentifier,
-      partitions: TokenPartition[] = [],
+      partitions: TokenPartition[],
+      parameters: TransactionParameters,
     ): TransactionURI {
       // execute token command `PublishToken`
-      this.result = this.execute(actor, tokenId, 'PublishToken', [
+      this.result = this.execute(actor, tokenId, 'PublishToken', parameters, [
         new CommandOption('partitions', partitions),
       ])
 
@@ -232,7 +233,8 @@ export namespace NIP13 {
     public notify(
       tokenId: TokenIdentifier,
       account: PublicAccount,
-      notification: Notification
+      notification: Notification,
+      parameters: TransactionParameters,
     ): NotificationProof {
       return new NotificationProof('')
     }
@@ -268,18 +270,14 @@ export namespace NIP13 {
       argv: CommandOption[]
     ): AllowanceResult {
       try {
-        // instanciate command and context
-        const cmdFn = this.getCommand(tokenId, command, this.getContext(
-          actor,
-          Deadline.create(),
-          undefined,
-          argv,
-        ))
+      // instanciate command and context
+      const params = new TransactionParameters()
+      const context = this.getContext(actor, params, argv)
+      const cmdFn = this.getCommand(tokenId, command, context)
 
-        // use `canExecute` for token command
-        return cmdFn.canExecute(actor, argv)
-      }
-      catch (f) {
+      // use `canExecute` for token command
+      return cmdFn.canExecute(actor, argv)
+      } catch (f) {
         // XXX error notifications / events
         throw f
       }
@@ -300,16 +298,13 @@ export namespace NIP13 {
       actor: PublicAccount,
       tokenId: TokenIdentifier,
       command: string,
+      parameters: TransactionParameters,
       argv: CommandOption[],
     ): TransactionURI {
       try {
         // instanciate command and context
-        const cmdFn = this.getCommand(tokenId, command, this.getContext(
-          actor,
-          Deadline.create(),
-          undefined,
-          argv,
-        ))
+        const context = this.getContext(actor, parameters, argv)
+        const cmdFn = this.getCommand(tokenId, command, context)
 
         // execute token command
         return cmdFn.execute(actor, argv)
@@ -323,26 +318,21 @@ export namespace NIP13 {
     /**
      * Gets an execution context
      *
-     * @param   {PublicAccount}   actor
-     * @param   {PublicAccount}   target
-     * @param   {Deadline}        deadline
-     * @param   {UInt64}          maxFee
-     * @param   {CommandOption[]} argv
+     * @param   {PublicAccount}           actor
+     * @param   {TransactionParameters}   parameters
+     * @param   {CommandOption[]}         argv
      * @return  {Context}
      */
     public getContext(
       actor: PublicAccount,
-      deadline?: Deadline,
-      maxFee?: UInt64,
+      parameters: TransactionParameters,
       argv?: CommandOption[],
     ): Context {
       return new Context(
         Revision,
         actor,
-        new RepositoryFactoryHttp(this.nodeUrl),
-        this.networkType,
-        deadline,
-        maxFee,
+        this.network,
+        parameters,
         argv
       )
     }

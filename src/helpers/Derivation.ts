@@ -26,9 +26,9 @@ import {
  */
 export namespace Derivation {
   /**
-   * @description The first operator account's derivation path
+   * @description The target account's derivation path for NIP13
    */
-  export const DEFAULT_HDPATH: string = 'm/44\'/4343\'/131313\'/0\'/0\''
+  export const PATH_NIP13: string = 'm/44\'/4343\'/1313\'/0\'/0\''
 
   /**
    * @enum DerivationPathLevels
@@ -159,7 +159,7 @@ export namespace Derivation {
    * @throws {FailureInvalidDerivationPath} On invalid derivation path or derivation path level provided.
    */
   export const getPaths = (
-    startPath: string = DEFAULT_HDPATH,
+    startPath: string,
     size: number = 1,
   ): string[] => {
     if (size <= 1) {

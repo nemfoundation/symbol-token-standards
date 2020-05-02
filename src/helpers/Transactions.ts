@@ -38,6 +38,7 @@ import {
   UInt64,
   MosaicAliasTransaction,
   AliasAction,
+  MosaicMetadataTransaction,
 } from 'symbol-sdk'
 
 // internal dependencies
@@ -232,6 +233,30 @@ export namespace Transactions {
       AliasAction.Link,
       namespaceId,
       mosaicId,
+      context.network.networkType,
+      context.parameters.maxFee,
+    )
+  }
+
+  /**
+   * @function NIP13.Transactions.createMosaicMetadata()
+   * @description Helper function to create a mosaic metadata transaction.
+   * @link https://nemtech.github.io/concepts/metadata.html#mosaic-metadata-transaction
+   */
+  export const createMosaicMetadata = (
+    context: Context,
+    mosaicId: MosaicId,
+    targetAccount: PublicAccount,
+    metadataKey: string,
+    metadataValue: string,
+  ): MosaicMetadataTransaction => {
+    return MosaicMetadataTransaction.create(
+      context.parameters.deadline,
+      targetAccount.publicKey,
+      KeyGenerator.generateUInt64Key(metadataKey),
+      mosaicId,
+      metadataValue.length,
+      metadataValue,
       context.network.networkType,
       context.parameters.maxFee,
     )

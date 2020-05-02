@@ -33,6 +33,10 @@ export class FakeCommand extends BaseCommand {
     return 'FakeCommand'
   }
 
+  public get descriptor(): string {
+    return 'NIP13(' + this.context.revision + '):fake:0'
+  }
+
   public async synchronize(): Promise<boolean> {
     return true
   }

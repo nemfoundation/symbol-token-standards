@@ -103,6 +103,13 @@ export abstract class AbstractCommand extends BaseCommand {
   public abstract get name(): string
 
   /**
+   * Getter for the command descriptor.
+   *
+   * @return {string}
+   **/
+  public abstract get descriptor(): string
+
+  /**
    * @description Build a command's transactions. Transactions returned here will
    *              be formatted to a transaction URI in the `execute()` step.
    * @see {BaseCommand.transactions}

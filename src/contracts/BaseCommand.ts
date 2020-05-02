@@ -68,6 +68,13 @@ export abstract class BaseCommand implements Command {
   public abstract get name(): string
 
   /**
+   * Getter for the command descriptor.
+   *
+   * @return {string}
+   **/
+  public abstract get descriptor(): string
+
+  /**
    * Synchronize the command execution with the network. This method shall
    * be used to fetch data required for execution.
    *

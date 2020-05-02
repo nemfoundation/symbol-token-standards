@@ -27,6 +27,7 @@ import {
 // internal dependencies
 import { TransactionsHelpers, CommandOption, AllowanceResult } from '../../../../index'
 import { AbstractCommand } from './AbstractCommand'
+import { SecuritiesMetadata } from '../models/SecuritiesMetadata'
 
 /**
  * @class NIP13.CreateToken
@@ -40,23 +41,36 @@ import { AbstractCommand } from './AbstractCommand'
  *   - Transaction 04: MosaicDefinitionTransaction
  *   - Transaction 05: MosaicSupplyChangeTransaction
  *   - Transaction 06: MosaicAliasTransaction
- *   - Transaction 07: AccountMosaicRestrictionTransaction with MosaicId = mosaicId to allow mosaic for TARGET account
- *   - Transaction 08: AccountMosaicRestrictionTransaction with MosaicId = feeMosaicId to allow paying fees for TARGET account
- *   - Transaction 09: MosaicGlobalRestriction with mosaicId (refId 0) (User_Role <= 2)
- *   - Transaction 10: MosaicAddressRestriction for target account (User_Role = Target)
+ *   - Transaction 07: MosaicMetadataTransaction attaching `MIC` market identifier code
+ *   - Transaction 08: MosaicMetadataTransaction attaching `ISIN` if non-empty option provided
+ *   - Transaction 09: MosaicMetadataTransaction attaching `ISO_10962` if non-empty option provided
+ *   - Transaction 10: AccountMosaicRestrictionTransaction with MosaicId = mosaicId to allow mosaic for TARGET account
+ *   - Transaction 11: AccountMosaicRestrictionTransaction with MosaicId = feeMosaicId to allow paying fees for TARGET account
+ *   - Transaction 12: MosaicGlobalRestriction with mosaicId (refId 0) (User_Role <= 2)
+ *   - Transaction 13: MosaicAddressRestriction for target account (User_Role = Target)
  *
  * :note: `Transaction 03` represents the root namespace registration transaction. Any sub namespace registration
  * transaction will be automatically added to this list.
+ *
+ * :note: `Transaction 07` will only be added if a non-empty value is provided for the `source` command option.
+ *
+ * :note: `Transaction 08` will only be added if a non-empty value is provided for the `isin` command option.
+ *
+ * :note: `Transaction 09` will only be added if a non-empty value is provided for the `iso10962` command option.
  */
 export class CreateToken extends AbstractCommand {
   /**
    * @description List of **required** arguments for this token command.
+   * @link https://en.wikipedia.org/wiki/International_Securities_Identification_Number
+   * @link https://en.wikipedia.org/wiki/ISO_10962
+   * @link https://en.wikipedia.org/wiki/Market_Identifier_Code
    */
   public arguments: string[] = [
     'name',
-    'source',
+    'source', // Can be Symbol generation hash or MIC (e.g. XNAS)
     'operators',
     'supply',
+    'metadata', // @see {NIP13/models/SecuritiesMetadata}
   ]
 
   /**
@@ -98,6 +112,15 @@ export class CreateToken extends AbstractCommand {
   }
 
   /**
+   * Getter for the command descriptor.
+   *
+   * @return {string}
+   **/
+  public get descriptor(): string {
+    return 'NIP13(v' + this.context.revision + ')' + ':create:' + this.identifier.id
+  }
+
+  /**
    * @description Builds the inner transactions necessary for the
    *              execution of a `CreateToken` command.
    * @see {AbstractCommand.transactions}
@@ -111,8 +134,12 @@ export class CreateToken extends AbstractCommand {
     // read external arguments
     const fullName = this.context.getInput('name', '')
     const operators = this.context.getInput('operators', [])
-    const source = this.context.getInput('source', '')
     const supply = this.context.getInput('supply', 1)
+    const metadata = this.context.getInput('metadata', new SecuritiesMetadata(
+      '', // ISO_10962 (MIC)
+      '', // ISO_6166 (ISIN)
+      '', // ISO_10383
+    ))
 
     // prepare output
     const transactions: InnerTransaction[] = []
@@ -124,7 +151,7 @@ export class CreateToken extends AbstractCommand {
       this.target.address,
       undefined,
       undefined,
-      'NIP13(v' + this.context.revision + '):create:' + this.identifier.id
+      this.descriptor,
     ))
 
     // Transaction 01 is issued by **target** account (multisig)
@@ -192,27 +219,69 @@ export class CreateToken extends AbstractCommand {
     // Transaction 06 is issued by **target** account (multisig)
     signers.push(this.target)
 
-    // Transaction 07: AccountMosaicRestrictionTransaction with MosaicId = mosaicId
+    if (metadata.mic.length) {
+      // Transaction 07: MosaicMetadataTransaction attaching `MIC` market identifier code
+      transactions.push(TransactionsHelpers.createMosaicMetadata(
+        this.context,
+        mosaicId,
+        this.target,
+        'MIC',
+        metadata.mic,
+      ))
+
+      // Transaction 07 is issued by **target** account (multisig)
+      signers.push(this.target)
+    }
+
+    if (metadata.isin.length) {
+      // Transaction 08: MosaicMetadataTransaction attaching `ISIN` International Securities Identification Number
+      transactions.push(TransactionsHelpers.createMosaicMetadata(
+        this.context,
+        mosaicId,
+        this.target,
+        'ISIN',
+        metadata.isin,
+      ))
+
+      // Transaction 08 is issued by **target** account (multisig)
+      signers.push(this.target)
+    }
+
+    if (metadata.classification.length) {
+      // Transaction 09: MosaicMetadataTransaction attaching `ISIN` International Securities Identification Number
+      transactions.push(TransactionsHelpers.createMosaicMetadata(
+        this.context,
+        mosaicId,
+        this.target,
+        'ISO_10962',
+        metadata.classification,
+      ))
+
+      // Transaction 09 is issued by **target** account (multisig)
+      signers.push(this.target)
+    }
+
+    // Transaction 10: AccountMosaicRestrictionTransaction with MosaicId = mosaicId
     transactions.push(TransactionsHelpers.createAccountMosaicRestriction(
       this.context,
       [mosaicId],
       // flags=Allow_Mosaic
     ))
 
-    // Transaction 07 is issued by **target** account (multisig)
+    // Transaction 10 is issued by **target** account (multisig)
     signers.push(this.target)
 
-    // Transaction 08: AccountMosaicRestrictionTransaction with MosaicId = NETWORK_FEE_MOSAIC_ID
+    // Transaction 11: AccountMosaicRestrictionTransaction with MosaicId = NETWORK_FEE_MOSAIC_ID
     transactions.push(TransactionsHelpers.createAccountMosaicRestriction(
       this.context,
       [this.context.network.feeMosaicId],
       // flags=Allow_Mosaic
     ))
 
-    // Transaction 08 is issued by **target** account (multisig)
+    // Transaction 11 is issued by **target** account (multisig)
     signers.push(this.target)
 
-    // Transaction 09: MosaicGlobalRestriction with mosaicId (refId 0)
+    // Transaction 12: MosaicGlobalRestriction with mosaicId (refId 0)
     // :warning: This restricts the **mosaic** to accounts who have the 
     //           'User_Role' flag set to at least 2 ("Holder" | "Target").
     transactions.push(TransactionsHelpers.createMosaicGlobalRestriction(
@@ -223,10 +292,10 @@ export class CreateToken extends AbstractCommand {
       2, // 1 = Target ; 2 = Holder ; 3 = Guest ; 4 = Locked
     ))
 
-    // Transaction 09 is issued by **target** account (multisig)
+    // Transaction 12 is issued by **target** account (multisig)
     signers.push(this.target)
 
-    // Transaction 10: MosaicAddressRestriction for target address
+    // Transaction 13: MosaicAddressRestriction for target address
     transactions.push(TransactionsHelpers.createMosaicAddressRestriction(
       this.context,
       mosaicId,
@@ -235,7 +304,7 @@ export class CreateToken extends AbstractCommand {
       1, // 1 = Target
     ))
 
-    // Transaction 10 is issued by the target account
+    // Transaction 13 is issued by the target account
     signers.push(this.target)
 
     // return transactions issued by assigned signer

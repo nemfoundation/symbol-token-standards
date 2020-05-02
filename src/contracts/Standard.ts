@@ -47,42 +47,6 @@ export interface Standard {
   readonly network: NetworkConfig
 
   /**
-   * Creates a new Security Token with pre-defined Symbol feature set.
-   *
-   * @param   {string}                name
-   * @param   {PublicAccount}         actor
-   * @param   {PublicAccount}         target
-   * @param   {Array<PublicAccount>}  operators
-   * @param   {number}                supply
-   * @param   {TransactionParameters} parameters
-   * @return  {TokenIdentifier}
-   **/
-  create(
-    name: string,
-    actor: PublicAccount,
-    operators: PublicAccount[],
-    supply: number,
-    parameters: TransactionParameters,
-  ): TokenIdentifier
-
-  /**
-   * Publish a previously created Security Token with identifier `tokenId`.
-   *
-   * @internal This method MUST use the `PublishToken` command.
-   * @param   {PublicAccount}         actor
-   * @param   {TokenIdentifier}       tokenId
-   * @param   {TokenPartition[]}      partitions (Optional) partitions records
-   * @param   {TransactionParameters} parameters
-   * @return  {TransactionURI}
-   **/
-  publish(
-    actor: PublicAccount,
-    tokenId: TokenIdentifier,
-    partitions: TokenPartition[],
-    parameters: TransactionParameters,
-  ): TransactionURI
-
-  /**
    * Notify an account `account` about `notification`
    *
    * @param   {TokenIdentifier} tokenId

@@ -55,6 +55,15 @@ export class PublishToken extends AbstractCommand {
   }
 
   /**
+   * Getter for the command descriptor.
+   *
+   * @return {string}
+   **/
+  public get descriptor(): string {
+    return 'NIP13(v' + this.context.revision + ')' + ':publish:' + this.identifier.id
+  }
+
+  /**
    * @description Builds the inner transactions necessary for the
    *              execution of a `PublishToken` command.
    * @see {AbstractCommand.transactions}
@@ -75,7 +84,7 @@ export class PublishToken extends AbstractCommand {
       this.target.address,
       undefined,
       undefined,
-      'NIP13(v' + this.context.revision + '):publish:' + this.identifier.id
+      this.descriptor,
     ))
 
     // Transaction 01 is issued by **target** account (multisig)

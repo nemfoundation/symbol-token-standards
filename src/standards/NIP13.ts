@@ -56,6 +56,7 @@ import {
 } from '../../index'
 import { AbstractCommand } from './NIP13/commands/AbstractCommand'
 import { TransactionParameters } from '../models/TransactionParameters'
+import { SecuritiesMetadata } from './NIP13/models/SecuritiesMetadata'
 
 export namespace NIP13 {
 
@@ -167,6 +168,7 @@ export namespace NIP13 {
       actor: PublicAccount,
       operators: PublicAccount[],
       supply: number,
+      metadata: SecuritiesMetadata,
       parameters: TransactionParameters,
     ): TokenIdentifier {
 
@@ -193,6 +195,7 @@ export namespace NIP13 {
         new CommandOption('source', this.source),
         new CommandOption('operators', operators),
         new CommandOption('supply', supply),
+        new CommandOption('metadata', metadata),
       ])
 
       return tokenId

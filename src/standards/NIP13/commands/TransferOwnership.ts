@@ -41,6 +41,15 @@ export class TransferOwnership extends AbstractCommand {
   }
 
   /**
+   * Getter for the command descriptor.
+   *
+   * @return {string}
+   **/
+  public get descriptor(): string {
+    return 'NIP13(v' + this.context.revision + ')' + ':partition:' + this.identifier.id
+  }
+
+  /**
    * @description Builds the inner transactions necessary for the
    *              execution of a `TransferOwnership` command.
    * @see {AbstractCommand.transactions}
@@ -98,7 +107,7 @@ export class TransferOwnership extends AbstractCommand {
       newAccount.address,
       this.identifier.toMosaicId(),
       amount,
-      'NIP13(v' + this.context.revision + '):partition:' + this.identifier.id
+      this.descriptor,
     ))
 
     // Transaction 01 is issued by **old** partition account (old owner)

@@ -42,6 +42,11 @@ export interface Command {
   readonly context: Context
 
   /**
+   * @description The command on-chain descriptor
+   */
+  readonly descriptor: string
+
+  /**
    * Synchronize the command execution with the network. This method shall
    * be used to fetch data required for execution.
    *

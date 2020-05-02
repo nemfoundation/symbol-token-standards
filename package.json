@@ -1,6 +1,6 @@
 {
   "name": "symbol-token-standards",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "description": "Symbol library to handle Token Standards",
   "author": "NEM Foundation <devs@nem.foundation>",
   "main": "dist/index.js",

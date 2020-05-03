@@ -35,12 +35,9 @@ export { TokenSource } from './src/models/TokenSource'
 export { TransactionParameters } from './src/models/TransactionParameters'
 
 // helpers
-export { Accounts as AccountsHelpers } from './src/helpers/Accounts'
 export { Derivation as DerivationHelpers } from './src/helpers/Derivation'
-export { Transactions as TransactionsHelpers } from './src/helpers/Transactions'
 
 // contracts
-export { Accountable } from './src/contracts/Accountable'
 export { Context } from './src/contracts/Context'
 export { Command } from './src/contracts/Command'
 export { Service } from './src/contracts/Service'

@@ -51,45 +51,16 @@ export class TokenPartition {
     public owner: PublicAccount,
 
     /**
+     * @description The partition account
+     */
+    public account: PublicAccount,
+
+    /**
      * @description The amount of the partition
      */
     public amount: number,
   )
   {
-  }
-
-  /**
-   * Getter for the readonly id property. The id property
-   * is generated out of the left most 8 bytes of a SHA3-256
-   * hash of the owner address.
-   *
-   * @return {string}
-   */
-  public get id(): string {
-    // prepare deterministic identifier
-    const hash = new Uint8Array(64)
-    const data = this.owner.address.plain()
-    SHA3Hasher.func(hash, Convert.utf8ToUint8(data), 64)
-
-    // 8 left-most bytes for partition id
-    const left8b = parseInt(hash.slice(0, 8).join(''), 16)
-    return left8b.toString()
-  }
-
-  /**
-   * Derives a public account with \a `keyProvider`
-   *
-   * @param {Wallet} keyProvider 
-   * @return {Account}
-   */
-  public deriveAccount(
-    keyProvider: Wallet,
-    networkType: NetworkType,
-  ): Account {
-    return keyProvider.getChildAccount(
-      `m/44'/4343'/131313'/0'/${this.id}'`, // XXX refactor me
-      networkType,
-    )
   }
 
   /**
@@ -103,6 +74,8 @@ export class TokenPartition {
   ): boolean {
     return this.owner.publicKey === rhs.owner.publicKey
         && this.owner.address.equals(rhs.owner.address)
+        && this.account.publicKey === rhs.account.publicKey
+        && this.account.address.equals(rhs.account.address)
         && this.amount === rhs.amount
         && this.name === rhs.name
   }

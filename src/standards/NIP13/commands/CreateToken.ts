@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 import {
-  Account,
   InnerTransaction,
   MosaicId,
   MosaicNonce,
@@ -22,10 +21,27 @@ import {
   PublicAccount,
   Transaction,
   NamespaceId,
+  MultisigAccountModificationTransaction,
+  TransferTransaction,
+  PlainMessage,
+  UInt64,
+  NamespaceRegistrationTransaction,
+  MosaicDefinitionTransaction,
+  MosaicFlags,
+  MosaicSupplyChangeTransaction,
+  MosaicSupplyChangeAction,
+  MosaicAliasTransaction,
+  AliasAction,
+  MosaicMetadataTransaction,
+  KeyGenerator,
+  AccountMosaicRestrictionTransaction,
+  AccountRestrictionFlags,
+  MosaicGlobalRestrictionTransaction,
+  MosaicAddressRestrictionTransaction,
 } from 'symbol-sdk'
 
 // internal dependencies
-import { TransactionsHelpers, CommandOption, AllowanceResult } from '../../../../index'
+import { CommandOption, AllowanceResult } from '../../../../index'
 import { AbstractCommand } from './AbstractCommand'
 import { SecuritiesMetadata } from '../models/SecuritiesMetadata'
 
@@ -41,11 +57,11 @@ import { SecuritiesMetadata } from '../models/SecuritiesMetadata'
  *   - Transaction 04: MosaicDefinitionTransaction
  *   - Transaction 05: MosaicSupplyChangeTransaction
  *   - Transaction 06: MosaicAliasTransaction
- *   - Transaction 07: MosaicMetadataTransaction attaching `MIC` market identifier code
- *   - Transaction 08: MosaicMetadataTransaction attaching `ISIN` if non-empty option provided
- *   - Transaction 09: MosaicMetadataTransaction attaching `ISO_10962` if non-empty option provided
- *   - Transaction 10: AccountMosaicRestrictionTransaction with MosaicId = mosaicId to allow mosaic for TARGET account
- *   - Transaction 11: AccountMosaicRestrictionTransaction with MosaicId = feeMosaicId to allow paying fees for TARGET account
+ *   - Transaction 07: MosaicMetadataTransaction attaching `NAME`
+ *   - Transaction 08: MosaicMetadataTransaction attaching `MIC` market identifier code
+ *   - Transaction 09: MosaicMetadataTransaction attaching `ISIN` if non-empty option provided
+ *   - Transaction 10: MosaicMetadataTransaction attaching `ISO_10962` if non-empty option provided
+ *   - Transaction 11: AccountMosaicRestrictionTransaction with targets = [mosaicId, feeMosaicId] to allow mosaic and fees for TARGET account
  *   - Transaction 12: MosaicGlobalRestriction with mosaicId (refId 0) (User_Role <= 2)
  *   - Transaction 13: MosaicAddressRestriction for target account (User_Role = Target)
  *
@@ -146,23 +162,28 @@ export class CreateToken extends AbstractCommand {
     const signers: PublicAccount[] = []
 
     // Transaction 01: Add execution proof transaction
-    transactions.push(TransactionsHelpers.createTransfer(
-      this.context,
+    transactions.push(TransferTransaction.create(
+      this.context.parameters.deadline,
       this.target.address,
+      [], // no mosaics
+      PlainMessage.create(this.descriptor),
+      this.context.network.networkType,
       undefined,
-      undefined,
-      this.descriptor,
     ))
 
     // Transaction 01 is issued by **target** account (multisig)
     signers.push(this.target)
 
     // Transaction 02: MultisigAccountModificationTransaction
-    // :warning: minApproval is always n-1 to permit loss of up to 1 key.
-    transactions.push(TransactionsHelpers.createMultisigAccountModification(
-      this.context,
-      operators.length - 1,
-      operators
+    // :warning: minRemoval is always n-1 to permit loss of up to 1 key.
+    transactions.push(MultisigAccountModificationTransaction.create(
+      this.context.parameters.deadline,
+      this.operators.length, // all operators for minApproval
+      this.operators.length - 1, // all except one for minRemoval
+      this.operators.map(op => op.account),
+      [],
+      this.context.network.networkType,
+      undefined, // maxFee 0 for inner
     ))
 
     // Transaction 02 is issued by **target** account (multisig)
@@ -172,12 +193,27 @@ export class CreateToken extends AbstractCommand {
     // :note: up to `maxNamespacesDepth` levels are allowed
     const parts = fullName.split('.')
     for (let i = 0, m = parts.length; i < m; i ++) {
-      transactions.push(TransactionsHelpers.createNamespaceRegistration(
-        this.context,
-        2010240, // 1 year at 15 sec / block
-        parts[i],
-        i === 0 ? undefined : parts.slice(0, i - 1).join('.'),
-      ))
+      let transaction: NamespaceRegistrationTransaction
+      if (i == 0) { 
+        transaction = NamespaceRegistrationTransaction.createRootNamespace(
+          this.context.parameters.deadline,
+          parts[i], // namespaceName
+          UInt64.fromUint(2010240), // 1 year at 15 sec / block
+          this.context.network.networkType,
+          undefined, // maxFee 0 for inner
+        )
+      }
+      else { 
+        transaction = NamespaceRegistrationTransaction.createSubNamespace(
+          this.context.parameters.deadline,
+          name,
+          parts.slice(0, i - 1).join('.'), // parent
+          this.context.network.networkType,
+          undefined, // maxFee 0 for inner
+        )
+      }
+
+      transactions.push(transaction)
 
       // Transaction 03 is issued by **target** account (multisig)
       signers.push(this.target)
@@ -186,11 +222,15 @@ export class CreateToken extends AbstractCommand {
     // Transaction 04: MosaicDefinitionTransaction
     const mosaicNonce = MosaicNonce.createFromHex(identifier)
     const mosaicId = MosaicId.createFromNonce(mosaicNonce, target)
-    transactions.push(TransactionsHelpers.createMosaicDefinition(
-      this.context,
+    transactions.push(MosaicDefinitionTransaction.create(
+      this.context.parameters.deadline,
       mosaicNonce,
       mosaicId,
-      2010240, // 1 year at 15 sec / block
+      MosaicFlags.create(true, false, true), // always non-transferable.
+      0,
+      UInt64.fromUint(2010240), // 1 year at 15 sec / block
+      this.context.network.networkType,
+      undefined, // maxFee 0 for inner
     ))
 
     // Transaction 04 is issued by **target** account (multisig)
@@ -198,11 +238,13 @@ export class CreateToken extends AbstractCommand {
 
     if (0 < supply) {
       // Transaction 05: MosaicSupplyChangeTransaction
-      transactions.push(TransactionsHelpers.createMosaicSupplyChange(
-        this.context,
-        supply,
+      transactions.push(MosaicSupplyChangeTransaction.create(
+        this.context.parameters.deadline,
         mosaicId,
-        // action=Increase
+        MosaicSupplyChangeAction.Increase,
+        UInt64.fromUint(supply),
+        this.context.network.networkType,
+        undefined, // maxFee 0 for inner
       ))
 
       // Transaction 05 is issued by **target** account (multisig)
@@ -210,72 +252,92 @@ export class CreateToken extends AbstractCommand {
     }
 
     // Transaction 06: MosaicAliasTransaction
-    transactions.push(TransactionsHelpers.createMosaicAlias(
-      this.context,
+    transactions.push(MosaicAliasTransaction.create(
+      this.context.parameters.deadline,
+      AliasAction.Link,
       new NamespaceId(fullName),
       mosaicId,
+      this.context.network.networkType,
+      undefined, // maxFee 0 for inner
     ))
 
     // Transaction 06 is issued by **target** account (multisig)
     signers.push(this.target)
 
+    // Transaction 07: MosaicMetadataTransaction attaching `MIC` market identifier code
+    transactions.push(MosaicMetadataTransaction.create(
+      this.context.parameters.deadline,
+      this.target.publicKey,
+      KeyGenerator.generateUInt64Key('NAME'),
+      mosaicId,
+      fullName.length,
+      fullName,
+      this.context.network.networkType,
+      undefined, // maxFee 0 for inner
+    ))
+
+    // Transaction 07 is issued by **target** account (multisig)
+    signers.push(this.target)
+
     if (metadata.mic.length) {
-      // Transaction 07: MosaicMetadataTransaction attaching `MIC` market identifier code
-      transactions.push(TransactionsHelpers.createMosaicMetadata(
-        this.context,
+      // Transaction 08: MosaicMetadataTransaction attaching `MIC` market identifier code
+      transactions.push(MosaicMetadataTransaction.create(
+        this.context.parameters.deadline,
+        this.target.publicKey,
+        KeyGenerator.generateUInt64Key('MIC'),
         mosaicId,
-        this.target,
-        'MIC',
+        metadata.mic.length,
         metadata.mic,
-      ))
-
-      // Transaction 07 is issued by **target** account (multisig)
-      signers.push(this.target)
-    }
-
-    if (metadata.isin.length) {
-      // Transaction 08: MosaicMetadataTransaction attaching `ISIN` International Securities Identification Number
-      transactions.push(TransactionsHelpers.createMosaicMetadata(
-        this.context,
-        mosaicId,
-        this.target,
-        'ISIN',
-        metadata.isin,
+        this.context.network.networkType,
+        undefined, // maxFee 0 for inner
       ))
 
       // Transaction 08 is issued by **target** account (multisig)
       signers.push(this.target)
     }
 
-    if (metadata.classification.length) {
+    if (metadata.isin.length) {
       // Transaction 09: MosaicMetadataTransaction attaching `ISIN` International Securities Identification Number
-      transactions.push(TransactionsHelpers.createMosaicMetadata(
-        this.context,
+      transactions.push(MosaicMetadataTransaction.create(
+        this.context.parameters.deadline,
+        this.target.publicKey,
+        KeyGenerator.generateUInt64Key('ISIN'),
         mosaicId,
-        this.target,
-        'ISO_10962',
-        metadata.classification,
+        metadata.isin.length,
+        metadata.isin,
+        this.context.network.networkType,
+        undefined, // maxFee 0 for inner
       ))
 
       // Transaction 09 is issued by **target** account (multisig)
       signers.push(this.target)
     }
 
-    // Transaction 10: AccountMosaicRestrictionTransaction with MosaicId = mosaicId
-    transactions.push(TransactionsHelpers.createAccountMosaicRestriction(
-      this.context,
-      [mosaicId],
-      // flags=Allow_Mosaic
-    ))
+    if (metadata.classification.length) {
+      // Transaction 10: MosaicMetadataTransaction attaching `ISIN` International Securities Identification Number
+      transactions.push(MosaicMetadataTransaction.create(
+        this.context.parameters.deadline,
+        this.target.publicKey,
+        KeyGenerator.generateUInt64Key('ISO_10962'),
+        mosaicId,
+        metadata.classification.length,
+        metadata.classification,
+        this.context.network.networkType,
+        undefined, // maxFee 0 for inner
+      ))
 
-    // Transaction 10 is issued by **target** account (multisig)
-    signers.push(this.target)
+      // Transaction 10 is issued by **target** account (multisig)
+      signers.push(this.target)
+    }
 
-    // Transaction 11: AccountMosaicRestrictionTransaction with MosaicId = NETWORK_FEE_MOSAIC_ID
-    transactions.push(TransactionsHelpers.createAccountMosaicRestriction(
-      this.context,
-      [this.context.network.feeMosaicId],
-      // flags=Allow_Mosaic
+    // Transaction 11: AccountMosaicRestrictionTransaction with MosaicId = mosaicId
+    transactions.push(AccountMosaicRestrictionTransaction.create(
+      this.context.parameters.deadline,
+      AccountRestrictionFlags.AllowMosaic,
+      [mosaicId, this.context.network.feeMosaicId], // MosaicId & networkCurrencyMosaicId
+      [],
+      this.context.network.networkType,
+      undefined, // maxFee 0 for inner
     ))
 
     // Transaction 11 is issued by **target** account (multisig)
@@ -284,24 +346,32 @@ export class CreateToken extends AbstractCommand {
     // Transaction 12: MosaicGlobalRestriction with mosaicId (refId 0)
     // :warning: This restricts the **mosaic** to accounts who have the 
     //           'User_Role' flag set to at least 2 ("Holder" | "Target").
-    transactions.push(TransactionsHelpers.createMosaicGlobalRestriction(
-      this.context,
+    transactions.push(MosaicGlobalRestrictionTransaction.create(
+      this.context.parameters.deadline,
       mosaicId,
-      'User_Role',
-      MosaicRestrictionType.LE, // `less or equal then`
-      2, // 1 = Target ; 2 = Holder ; 3 = Guest ; 4 = Locked
+      KeyGenerator.generateUInt64Key('User_Role'),
+      UInt64.fromUint(0), // previousRestrictionValue
+      MosaicRestrictionType.NONE, // previousRestrictionType
+      UInt64.fromUint(2), // newRestrictionValue: 1 = Target ; 2 = Holder ; 3 = Guest ; 4 = Locked
+      MosaicRestrictionType.LE, // newRestrictionType: `less or equal to`
+      this.context.network.networkType,
+      undefined, // referenceMosaicId: empty means "self"
+      undefined, // maxFee 0 for inner
     ))
 
     // Transaction 12 is issued by **target** account (multisig)
     signers.push(this.target)
 
     // Transaction 13: MosaicAddressRestriction for target address
-    transactions.push(TransactionsHelpers.createMosaicAddressRestriction(
-      this.context,
+    transactions.push(MosaicAddressRestrictionTransaction.create(
+      this.context.parameters.deadline,
       mosaicId,
-      'User_Role',
+      KeyGenerator.generateUInt64Key('User_Role'),
       this.target.address,
-      1, // 1 = Target
+      UInt64.fromUint(1), // newRestrictionValue: 1 = Target
+      this.context.network.networkType,
+      undefined, // previousRestrictionValue
+      undefined, // maxFee 0 for inner
     ))
 
     // Transaction 13 is issued by the target account

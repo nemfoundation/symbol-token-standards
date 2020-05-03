@@ -17,23 +17,16 @@ import { TransactionURI } from 'symbol-uri-scheme'
 import {
   Convert,
   PublicAccount,
-  UInt64,
-  Deadline,
   SHA3Hasher,
-  RepositoryFactoryHttp,
-  NetworkType,
 } from 'symbol-sdk'
 import {
-  ExtendedKey,
   MnemonicPassPhrase,
-  Network,
   Wallet,
 } from 'symbol-hd-wallets'
 
 // internal dependencies
 import { NIP13 as CommandsImpl } from './NIP13/index'
 import {
-  Accountable,
   AllowanceResult,
   Command,
   CommandOption,
@@ -46,10 +39,10 @@ import {
   TokenPartition,
   TokenSource,
   Context,
-  DerivationHelpers,
   TransactionParameters,
 } from '../../index'
 import { SecuritiesMetadata } from './NIP13/models/SecuritiesMetadata'
+import { Accountable } from './NIP13/contracts/Accountable'
 
 export namespace NIP13 {
 
@@ -91,7 +84,6 @@ export namespace NIP13 {
    */
   export const TokenCommands: CommandsList = {
     'CreateToken': (c, i, k): Command => new CommandsImpl.CreateToken(c, i, k),
-    'PublishToken': (c, i, k): Command => new CommandsImpl.PublishToken(c, i, k),
     'TransferOwnership': (c, i, k): Command => new CommandsImpl.TransferOwnership(c, i, k),
   }
 
@@ -148,9 +140,7 @@ export namespace NIP13 {
       super(network, bip39)
 
       // derive base keys
-      this.target = this.getAccount(
-        DerivationHelpers.PATH_NIP13, // m/44'/4343'/336237441331'/0'/0'
-      ).publicAccount
+      this.target = this.getTarget().publicAccount
 
       // set network configuration
       this.source = new TokenSource(this.network.generationHash)
@@ -206,24 +196,33 @@ export namespace NIP13 {
     }
 
     /**
-     * Publish a previously created Security Token with identifier `tokenId`.
+     * Transfer shared of a previously created Security Token with identifier `tokenId`.
      *
-     * @internal This method MUST use the `PublishToken` command.
+     * @internal This method MUST use the `TransferOwnership` command.
      * @param   {PublicAccount}         actor
      * @param   {TokenIdentifier}       tokenId
-     * @param   {TokenPartition[]}      partitions (Optional) partitions records
+     * @param   {PublicAccount}         partition
+     * @param   {PublicAccount}         sender
+     * @param   {PublicAccount}         recipient
+     * @param   {number}                amount
      * @param   {TransactionParameters} parameters
      * @return  {TransactionURI}
      **/
-    public publish(
+    public transfer(
       actor: PublicAccount,
       tokenId: TokenIdentifier,
-      partitions: TokenPartition[],
+      partition: PublicAccount,
+      sender: PublicAccount,
+      recipient: PublicAccount,
+      amount: number,
       parameters: TransactionParameters,
     ): TransactionURI {
-      // execute token command `PublishToken`
-      this.result = this.execute(actor, tokenId, 'PublishToken', parameters, [
-        new CommandOption('partitions', partitions),
+      // execute token command `TransferOwnership`
+      this.result = this.execute(actor, tokenId, 'TransferOwnership', parameters, [
+        new CommandOption('sender', sender),
+        new CommandOption('partition', partition),
+        new CommandOption('recipient', recipient),
+        new CommandOption('amount', amount),
       ])
 
       return this.result

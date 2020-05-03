@@ -147,8 +147,9 @@ export abstract class AbstractCommand extends BaseCommand {
     this.partitions = await partitions.getPartitionsFromNetwork(
       this.context.network.factoryHttp,
       this.identifier,
+      this.target,
       this.operators,
-      'NIP13(v' + this.context.revision + '):partition:'
+      'NIP13(v' + this.context.revision + '):transfer:' + this.identifier.id + ':' // label after this
     )
 
     // success exit

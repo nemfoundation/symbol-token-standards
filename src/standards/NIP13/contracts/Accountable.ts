@@ -13,7 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { Account, NetworkType } from 'symbol-sdk'
+import {
+  Account,
+  Convert,
+  PublicAccount,
+  SHA3Hasher,
+} from 'symbol-sdk'
 import {
   ExtendedKey,
   MnemonicPassPhrase,
@@ -22,11 +27,14 @@ import {
 } from 'symbol-hd-wallets'
 
 // internal dependencies
-import { NetworkConfig } from '../../index'
+import {
+  DerivationHelpers,
+  NetworkConfig,
+} from '../../../../index'
 
 /**
  * @class Accountable
- * @package contracts
+ * @package NIP13/contracts
  * @since v0.3.0
  * @description Class that describes an object able to create accounts.
  */
@@ -63,14 +71,64 @@ export class Accountable {
    * Derive a child account
    *
    * @param {string}      derivationPath 
-   * @param {NetworkType} networkType 
    */
-  public getAccount(
+  protected getAccount(
     derivationPath: string,
   ): Account {
     return this.keyProvider.getChildAccount(
       derivationPath,
       this.network.networkType,
     )
+  }
+
+  /**
+   * Derive a **target** account
+   */
+  public getTarget(): Account {
+    return this.getAccount(DerivationHelpers.PATH_NIP13)
+  }
+
+  /**
+   * Derive an **operator** account
+   *
+   * @internal Operator account derivation paths use the REMOTE (BIP44=CHANGE) path level.
+   * @param {number}  at
+   */
+  public getOperator(
+    at: number = 1
+  ): Account {
+    // prepare derivation
+    const start = DerivationHelpers.PATH_NIP13
+    const level = DerivationHelpers.DerivationPathLevels.Remote
+
+    // derive operator
+    const path = DerivationHelpers.incrementPathLevel(start, level, at)
+    return this.getAccount(path)
+  }
+
+  /**
+   * Derive a **partition** account
+   *
+   * @internal Operator account derivation paths use the ADDRESS path level.
+   * @param {PublicAccount}  owner
+   */
+  public getPartition(
+    owner: PublicAccount
+  ): Account {
+    // prepare derivation
+    const start = DerivationHelpers.PATH_NIP13
+    const level = DerivationHelpers.DerivationPathLevels.Address
+
+    // prepare deterministic
+    const hash = new Uint8Array(64)
+    const data = owner.address.plain()
+    SHA3Hasher.func(hash, Convert.utf8ToUint8(data), 64)
+
+    // 4 left-most bytes for partition id
+    const left4b = parseInt(hash.slice(0, 4).join(''), 16)
+
+    // derive operator
+    const path = DerivationHelpers.incrementPathLevel(start, level, left4b)
+    return this.getAccount(path)
   }
 }

@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 import {
-  MultisigAccountGraphInfo,
   MultisigAccountInfo,
   PublicAccount,
   RepositoryFactoryHttp,
@@ -31,6 +30,8 @@ import {
   TokenPartition,
   TokenIdentifier,
 } from '../../../../index'
+import { TransactionService } from './TransactionService'
+import { MultisigService } from './MultisigService'
 
 /**
  * @class PartitionService
@@ -50,50 +51,83 @@ export class PartitionService extends Service {
   public async getPartitionsFromNetwork(
     factory: RepositoryFactoryHttp,
     tokenId: TokenIdentifier,
+    target: PublicAccount,
     operators: MultisigAccountInfo[],
     descriptor: string = '',
   ): Promise<TokenPartition[]> {
+    // prepare output
     const partitions: TokenPartition[] = []
     const accounts: PublicAccount[] = []
 
-    // reduce partition accounts
+    // Step 1) reduce operators to read partition accounts
     operators.map(
       (operator: MultisigAccountInfo) => operator.multisigAccounts
-    ).reduce((prev, it) => accounts.concat(it))
+    ).reduce((prev, it) => {
+      // filter out target
+      return accounts.concat(it.filter(
+        p => !p.address.equals(target.address)
+      ))
+    })
 
-    // read from network
+    // Step 2) read accounts from network
     const accountHttp = factory.createAccountRepository()
-    const infos = await accountHttp.getAccountsInfo(accounts.map(pub => pub.address)).toPromise()
+    const multisigHttp = factory.createMultisigRepository()
+    const infos = await accountHttp.getAccountsInfo(
+      accounts.map(pub => pub.address)
+    ).toPromise()
 
-    // iterate partition accounts
+    // initialize transactions service
+    const multisig = new MultisigService(this.context)
+    const service = new TransactionService(
+      accountHttp,
+      factory.createChainRepository(),
+      factory.createTransactionRepository(),
+      factory.createReceiptRepository(),
+      100
+    )
+
+    // Step 3) iterate partition accounts
     for (let i = 0, m = infos.length; i < m; i ++) {
-      // fetch partition owner incoming transaction
-      // XXX sequential fetcher / pagination
       const accountInfo: AccountInfo = infos[i]
-      const transactions: Transaction[] = await accountHttp.getAccountIncomingTransactions(accountInfo.address).toPromise()
 
-      // filter partition label transaction
-      const nameTransaction = transactions.filter(
-        tx => tx.type === TransactionType.TRANSFER
-      ).map(
-        _ => _ as TransferTransaction
-      ).filter(
+      // Step 3.1) get partition account multisig graph
+      const graph = await multisigHttp.getMultisigAccountGraphInfo(accountInfo.address).toPromise()
+      const owner: PublicAccount = multisig.getMultisigAccountInfoFromGraph(graph).map(
+        (cosig: MultisigAccountInfo) => cosig.multisigAccounts
+      ).reduce((prev, it) => {
+        // filter out operators
+        const ops = operators.map(o => o.account.address.plain())
+        return prev.concat(it.filter(
+          c => !ops.includes(c.address.plain())
+        ))
+      })[0] // force one
+
+      // Step 3.2) fetch partition account incoming transaction
+      const transactions: TransferTransaction[] = await service.getTransfers(
+        accountInfo.address,
+        tokenId.toMosaicId(),
+        10,
+      ).toPromise()
+
+      // filter partition label transaction (take latest)
+      const lastMarker = transactions.filter(
         tx => tx.message.payload.startsWith(Convert.utf8ToHex(descriptor))
       ).shift()
 
-      // label is either of index or partition label
-      let partitionLabel = i.toString()
-      if (nameTransaction !== undefined) {
-        // read payload to identify partition label
-        const payload = nameTransaction.message.payload
-        partitionLabel = payload.substr(descriptor.length) // take everything to the right of the descriptor
+      if (lastMarker === undefined) {
+        // invalid partition configuration
+        continue
       }
+
+      // Step 3.3) read payload to identify partition label
+      const payload = lastMarker.message.payload
+      const label = payload.substr(descriptor.length) // take everything to the right of the descriptor
 
       // amount is either of 0 or partition amount
       let partitionAmount = 0
-      if (nameTransaction !== undefined && nameTransaction.mosaics.length) {
-        // read partition amount
-        const tokenEntry = nameTransaction.mosaics.filter(
+      if (accountInfo.mosaics.length) {
+        // Step 3.4) read partition amount
+        const tokenEntry = accountInfo.mosaics.filter(
           mosaic => mosaic.id.equals(tokenId.toMosaicId())
         ).shift()
 
@@ -102,11 +136,12 @@ export class PartitionService extends Service {
         }
       }
 
-      // register partition
+      // Step 3.5) register partition
       partitions.push(new TokenPartition(
-        partitionLabel,
+        label,
+        owner,
         accountInfo.publicAccount,
-        partitionAmount
+        partitionAmount,
       ))
     }
 

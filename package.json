@@ -11,7 +11,8 @@
   "dependencies": {
     "symbol-sdk": "^0.18.0",
     "symbol-uri-scheme": "^0.4.3",
-    "symbol-hd-wallets": "^0.10.0"
+    "symbol-hd-wallets": "^0.10.0",
+    "rxjs": "^6.5.3"
   },
   "devDependencies": {
     "@types/chai": "^4.2.9",

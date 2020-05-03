@@ -61,6 +61,7 @@ export namespace Transactions {
     nonce: MosaicNonce,
     mosaicId: MosaicId,
     duration: number,
+    withFee: boolean = false,
   ): MosaicDefinitionTransaction => {
     return MosaicDefinitionTransaction.create(
       context.parameters.deadline,
@@ -70,7 +71,7 @@ export namespace Transactions {
       0,
       UInt64.fromUint(duration),
       context.network.networkType,
-      context.parameters.maxFee,
+      withFee ? context.parameters.maxFee : undefined,
     )
   }
 
@@ -84,6 +85,7 @@ export namespace Transactions {
     supply: number,
     mosaicId: MosaicId,
     action: MosaicSupplyChangeAction = MosaicSupplyChangeAction.Increase,
+    withFee: boolean = false,
   ): MosaicSupplyChangeTransaction => {
     return MosaicSupplyChangeTransaction.create(
       context.parameters.deadline,
@@ -91,7 +93,7 @@ export namespace Transactions {
       action,
       UInt64.fromUint(supply),
       context.network.networkType,
-      context.parameters.maxFee,
+      withFee ? context.parameters.maxFee : undefined,
     )
   }
 
@@ -105,6 +107,7 @@ export namespace Transactions {
     duration: number,
     name: string,
     parent?: string,
+    withFee: boolean = false,
   ): NamespaceRegistrationTransaction => {
     if (undefined === parent || !parent.length) {
       return NamespaceRegistrationTransaction.createRootNamespace(
@@ -112,7 +115,7 @@ export namespace Transactions {
         name,
         UInt64.fromUint(duration),
         context.network.networkType,
-        context.parameters.maxFee,
+        withFee ? context.parameters.maxFee : undefined,
       )
     }
 
@@ -121,7 +124,7 @@ export namespace Transactions {
       name,
       parent,
       context.network.networkType,
-      context.parameters.maxFee,
+      withFee ? context.parameters.maxFee : undefined,
     )
   }
 
@@ -134,6 +137,7 @@ export namespace Transactions {
     context: Context,
     minimumOperators: number,
     operators: PublicAccount[],
+    withFee: boolean = false,
   ): MultisigAccountModificationTransaction => {
     return MultisigAccountModificationTransaction.create(
       context.parameters.deadline,
@@ -142,7 +146,7 @@ export namespace Transactions {
       operators,
       [],
       context.network.networkType,
-      context.parameters.maxFee,
+      withFee ? context.parameters.maxFee : undefined,
     )
   }
 
@@ -155,6 +159,7 @@ export namespace Transactions {
     context: Context,
     targets: (MosaicId | NamespaceId)[],
     flags: AccountRestrictionFlags = AccountRestrictionFlags.AllowMosaic,
+    withFee: boolean = false,
   ): AccountMosaicRestrictionTransaction => {
     return AccountMosaicRestrictionTransaction.create(
       context.parameters.deadline,
@@ -162,7 +167,7 @@ export namespace Transactions {
       targets,
       [],
       context.network.networkType,
-      context.parameters.maxFee,
+      withFee ? context.parameters.maxFee : undefined,
     )
   }
 
@@ -177,6 +182,7 @@ export namespace Transactions {
     restrictionKey: string,
     type: MosaicRestrictionType = MosaicRestrictionType.EQ,
     value: number = 1,
+    withFee: boolean = false,
   ): MosaicGlobalRestrictionTransaction => {
     const key = KeyGenerator.generateUInt64Key(restrictionKey.toLowerCase())
     return MosaicGlobalRestrictionTransaction.create(
@@ -189,7 +195,7 @@ export namespace Transactions {
       type, // newRestrictionType
       context.network.networkType,
       undefined, // referenceMosaicId
-      context.parameters.maxFee,
+      withFee ? context.parameters.maxFee : undefined,
     )
   }
 
@@ -204,6 +210,7 @@ export namespace Transactions {
     restrictionKey: string,
     target: Address,
     value: number,
+    withFee: boolean = false,
   ): MosaicAddressRestrictionTransaction => {
     const key = KeyGenerator.generateUInt64Key(restrictionKey.toLowerCase())
     return MosaicAddressRestrictionTransaction.create(
@@ -214,7 +221,7 @@ export namespace Transactions {
       UInt64.fromUint(value), // newRestrictionValue
       context.network.networkType,
       undefined,
-      context.parameters.maxFee,
+      withFee ? context.parameters.maxFee : undefined,
     )
   }
 
@@ -227,6 +234,7 @@ export namespace Transactions {
     context: Context,
     namespaceId: NamespaceId,
     mosaicId: MosaicId,
+    withFee: boolean = false,
   ): MosaicAliasTransaction => {
     return MosaicAliasTransaction.create(
       context.parameters.deadline,
@@ -234,7 +242,7 @@ export namespace Transactions {
       namespaceId,
       mosaicId,
       context.network.networkType,
-      context.parameters.maxFee,
+      withFee ? context.parameters.maxFee : undefined,
     )
   }
 
@@ -249,6 +257,7 @@ export namespace Transactions {
     targetAccount: PublicAccount,
     metadataKey: string,
     metadataValue: string,
+    withFee: boolean = false,
   ): MosaicMetadataTransaction => {
     return MosaicMetadataTransaction.create(
       context.parameters.deadline,
@@ -258,7 +267,7 @@ export namespace Transactions {
       metadataValue.length,
       metadataValue,
       context.network.networkType,
-      context.parameters.maxFee,
+      withFee ? context.parameters.maxFee : undefined,
     )
   }
 
@@ -273,6 +282,7 @@ export namespace Transactions {
     mosaicId?: MosaicId,
     amount?: number,
     message?: string,
+    withFee: boolean = false,
   ): TransferTransaction => {
     return TransferTransaction.create(
       context.parameters.deadline,
@@ -282,7 +292,7 @@ export namespace Transactions {
       ] : [],
       message ? PlainMessage.create(message) : EmptyMessage,
       context.network.networkType,
-      context.parameters.maxFee,
+      withFee ? context.parameters.maxFee : undefined,
     )
   }
 }

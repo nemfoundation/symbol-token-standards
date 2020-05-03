@@ -3,6 +3,15 @@ All notable changes to this project will be documented in this file.
 
 The changelog format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [v0.4.0][v0.4.0]
+
+- (NIP13) Decoupled transactions/accounts from library level
+- (NIP13) Changed PublishToken to TransferOwnership with first draft
+- (NIP13) Added mosaic metadata for securities NAME
+- (NIP13) Added account metadata for partition account NAME
+- (NIP13) Added partition account multi-signature account conversion
+- (NIP13) Added partition creation / update / transfer in TransferOwnership
+
 ## [v0.3.2][v0.3.2]
 
 - Added NIP13/models/SecuritiesMetadata

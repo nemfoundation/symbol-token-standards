@@ -94,12 +94,11 @@ export class TransferOwnership extends AbstractCommand {
     const transactions: InnerTransaction[] = []
     const signers: PublicAccount[] = []
 
-    // interpret state of command execution
+    // 1) sending from **target** account,
+    //    should create new partition multisig + transfer
     if (sender.address.equals(this.target.address)) {
-      // sending from **target** account
-      // should create new partition multisig + transfer
 
-      // Transaction 01: MultisigAccountModificationTransaction
+      // Transaction 1.01: MultisigAccountModificationTransaction
       // :warning: Recipient is made optional in both minApproval and minRemoval.
       transactions.push(MultisigAccountModificationTransaction.create(
         this.context.parameters.deadline,
@@ -113,10 +112,10 @@ export class TransferOwnership extends AbstractCommand {
         undefined, // maxFee 0 for inner
       ))
 
-      // Transaction 01 is issued by **partition** account
+      // Transaction 1.01 is issued by **partition** account
       signers.push(partition)
 
-      // Transaction 02: AccountMetadataTransaction
+      // Transaction 1.02: AccountMetadataTransaction
       transactions.push(AccountMetadataTransaction.create(
         this.context.parameters.deadline,
         partition.publicKey,
@@ -127,10 +126,10 @@ export class TransferOwnership extends AbstractCommand {
         undefined, // maxFee 0 for inner
       ))
 
-      // Transaction 02 is issued by **partition** account
+      // Transaction 1.02 is issued by **partition** account
       signers.push(partition)
 
-      // Transaction 03: AccountMosaicRestrictionTransaction
+      // Transaction 1.03: AccountMosaicRestrictionTransaction
       // :note: This transaction authorizes mosaicId and networkCurrencyMosaicId for partition
       transactions.push(AccountMosaicRestrictionTransaction.create(
         this.context.parameters.deadline,
@@ -141,10 +140,10 @@ export class TransferOwnership extends AbstractCommand {
         undefined, // maxFee 0 for inner
       ))
 
-      // Transaction 03 is issued by **target** account (multisig)
+      // Transaction 1.03 is issued by **target** account (multisig)
       signers.push(partition)
 
-      // Transaction 04: MosaicAddressRestriction for target address
+      // Transaction 1.04: MosaicAddressRestriction for target address
       // :note: This transaction authorizes the partition account by adding a User_Role=2 (Holder)
       transactions.push(MosaicAddressRestrictionTransaction.create(
         this.context.parameters.deadline,
@@ -157,25 +156,30 @@ export class TransferOwnership extends AbstractCommand {
         undefined, // maxFee 0 for inner
       ))
 
-      // Transaction 04 is issued by the target account
+      // Transaction 1.04 is issued by the target account
       signers.push(this.target)
 
-      // Transaction 05: Add ownership transfer transaction
+      // Transaction 1.05: Add ownership transfer transaction
       transactions.push(TransferTransaction.create(
         this.context.parameters.deadline,
         partition.address,
-        [], // no mosaics (already owned by partition account)
+        [
+          new Mosaic(
+            this.identifier.toMosaicId(),
+            UInt64.fromUint(amount),
+          )
+        ], // mosaics will be owned by partition account
         PlainMessage.create(this.descriptor + ':' + name),
         this.context.network.networkType,
         undefined,
       ))
 
-      // Transaction 05 is issued by **sender** account
+      // Transaction 1.05 is issued by **sender** account
       signers.push(sender)
     }
+    // 2) sending from **partition** account (not target account)
+    //    should change ownership from **owner** to **recipient**
     else {
-      // sending from **partition** account (not target account)
-      // should change ownership from **owner** to **recipient**
 
       const part = this.partitions.find(
         (p) => partition.address.equals(p.account.address)
@@ -186,37 +190,58 @@ export class TransferOwnership extends AbstractCommand {
         return []
       }
 
-      // Transaction 01: Add ownership transfer transaction
-      transactions.push(TransferTransaction.create(
-        this.context.parameters.deadline,
-        partition.address,
-        [
-          new Mosaic(
-            this.identifier.toMosaicId(),
-            UInt64.fromUint(amount)
-          )
-        ],
-        PlainMessage.create(this.descriptor + ':' + name),
-        this.context.network.networkType,
-        undefined,
-      ))
+      // 2.1) In case the new recipient is another partition,
+      //      the amount will be sent to the other partition.
+      if (this.partitions.some(p => p.account.address.equals(recipient.address))) {
+        // Transaction 2.1.01: Add ownership transfer transaction
+        transactions.push(TransferTransaction.create(
+          this.context.parameters.deadline,
+          recipient.address,
+          [
+            new Mosaic(
+              this.identifier.toMosaicId(),
+              UInt64.fromUint(amount),
+            )
+          ],
+          PlainMessage.create(this.descriptor + ':' + name),
+          this.context.network.networkType,
+          undefined,
+        ))
 
-      // Transaction 01 is issued by **partition** account
-      signers.push(partition)
+        // Transaction 2.1.01 is issued by **partition** account
+        signers.push(partition)
+      }
+      // 2.2) In case the new recipient is not a partition,
+      //      the recipient will be made a cosignatory of
+      //      the partition account and old owner removed.
+      else {
+        // Transaction 2.2.01: Add ownership transfer transaction
+        transactions.push(TransferTransaction.create(
+          this.context.parameters.deadline,
+          partition.address,
+          [], // no mosaics (already owned by partition account)
+          PlainMessage.create(this.descriptor + ':' + name),
+          this.context.network.networkType,
+          undefined,
+        ))
 
-      // Transaction 02: MultisigAccountModificationTransaction
-      transactions.push(MultisigAccountModificationTransaction.create(
-        this.context.parameters.deadline,
-        0, // no change to minApproval
-        0, // no change to minRemoval
-        [recipient], // add recipient as new owner
-        [sender], // remove old owner
-        this.context.network.networkType,
-        undefined, // maxFee 0 for inner
-      ))
+        // Transaction 2.2.01 is issued by **partition** account
+        signers.push(partition)
 
-      // Transaction 02 is issued by **partition** account
-      signers.push(partition)
+        // Transaction 2.2.02: MultisigAccountModificationTransaction
+        transactions.push(MultisigAccountModificationTransaction.create(
+          this.context.parameters.deadline,
+          0, // no change to minApproval
+          0, // no change to minRemoval
+          [recipient], // add recipient as new owner
+          [sender], // remove old owner
+          this.context.network.networkType,
+          undefined, // maxFee 0 for inner
+        ))
+
+        // Transaction 2.2.02 is issued by **partition** account
+        signers.push(partition)
+      }
     }
 
     // return transactions issued by assigned signer

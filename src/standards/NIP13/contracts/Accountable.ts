@@ -124,11 +124,14 @@ export class Accountable {
     const data = owner.address.plain()
     SHA3Hasher.func(hash, Convert.utf8ToUint8(data), 64)
 
-    // 4 left-most bytes for partition id
-    const left4b = parseInt(hash.slice(0, 4).join(''), 16)
+    // 4 right-most bytes (checksum) for partition id
+    const right4b = parseInt(hash.slice(-4).reduce(
+      (s, b) => s + b.toString(16).padStart(2, '0'),
+      '', // initialValue
+    ), 16)
 
-    // derive operator
-    const path = DerivationHelpers.incrementPathLevel(start, level, left4b)
+    // derive partition
+    const path = DerivationHelpers.incrementPathLevel(start, level, right4b)
     return this.getAccount(path)
   }
 }

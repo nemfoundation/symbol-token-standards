@@ -47,6 +47,11 @@ export class SecuritiesMetadata {
      * @link https://en.wikipedia.org/wiki/ISO_10962
      */
     public classification: string,
+
+    /**
+     * @description Custom metadata entries
+     */
+    public customMetadata: {[k: string]: string} = {},
   )
   {}
 }

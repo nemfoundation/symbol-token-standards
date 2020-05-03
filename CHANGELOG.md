@@ -3,6 +3,11 @@ All notable changes to this project will be documented in this file.
 
 The changelog format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [v0.4.1][v0.4.1]
+
+- (NIP13) Fixed multi-signature account conversion for target account
+- (NIP13) Added custom mosaic metadata capacity
+
 ## [v0.4.0][v0.4.0]
 
 - (NIP13) Decoupled transactions/accounts from library level

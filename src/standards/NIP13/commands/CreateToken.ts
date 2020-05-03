@@ -61,9 +61,10 @@ import { SecuritiesMetadata } from '../models/SecuritiesMetadata'
  *   - Transaction 08: MosaicMetadataTransaction attaching `MIC` market identifier code
  *   - Transaction 09: MosaicMetadataTransaction attaching `ISIN` if non-empty option provided
  *   - Transaction 10: MosaicMetadataTransaction attaching `ISO_10962` if non-empty option provided
- *   - Transaction 11: AccountMosaicRestrictionTransaction with targets = [mosaicId, feeMosaicId] to allow mosaic and fees for TARGET account
- *   - Transaction 12: MosaicGlobalRestriction with mosaicId (refId 0) (User_Role <= 2)
- *   - Transaction 13: MosaicAddressRestriction for target account (User_Role = Target)
+ *   - Transaction 11: MosaicMetadataTransaction attaching custom metadata if non-empty option provided
+ *   - Transaction 12: AccountMosaicRestrictionTransaction with targets = [mosaicId, feeMosaicId] to allow mosaic and fees for TARGET account
+ *   - Transaction 13: MosaicGlobalRestriction with mosaicId (refId 0) (User_Role <= 2)
+ *   - Transaction 14: MosaicAddressRestriction for target account (User_Role = Target)
  *
  * :note: `Transaction 03` represents the root namespace registration transaction. Any sub namespace registration
  * transaction will be automatically added to this list.
@@ -154,7 +155,8 @@ export class CreateToken extends AbstractCommand {
     const metadata = this.context.getInput('metadata', new SecuritiesMetadata(
       '', // ISO_10962 (MIC)
       '', // ISO_6166 (ISIN)
-      '', // ISO_10383
+      '', // ISO_10383,
+      {}, // customMetadata
     ))
 
     // prepare output
@@ -178,9 +180,9 @@ export class CreateToken extends AbstractCommand {
     // :warning: minRemoval is always n-1 to permit loss of up to 1 key.
     transactions.push(MultisigAccountModificationTransaction.create(
       this.context.parameters.deadline,
-      this.operators.length, // all operators for minApproval
-      this.operators.length - 1, // all except one for minRemoval
-      this.operators.map(op => op.account),
+      operators.length, // all operators for minApproval
+      operators.length - 1, // all except one for minRemoval
+      operators,
       [],
       this.context.network.networkType,
       undefined, // maxFee 0 for inner
@@ -330,7 +332,27 @@ export class CreateToken extends AbstractCommand {
       signers.push(this.target)
     }
 
-    // Transaction 11: AccountMosaicRestrictionTransaction with MosaicId = mosaicId
+    const customKeys = Object.keys(metadata.customMetadata)
+    if (customKeys.length) {
+      for (let k = 0; k < customKeys.length; k++) {
+        // Transaction 11: MosaicMetadataTransaction attaching custom metadata
+        transactions.push(MosaicMetadataTransaction.create(
+          this.context.parameters.deadline,
+          this.target.publicKey,
+          KeyGenerator.generateUInt64Key(customKeys[k]),
+          mosaicId,
+          metadata.customMetadata[customKeys[k]].length,
+          metadata.customMetadata[customKeys[k]],
+          this.context.network.networkType,
+          undefined, // maxFee 0 for inner
+        ))
+
+        // Transaction 11 is issued by **target** account (multisig)
+        signers.push(this.target)
+      }
+    }
+
+    // Transaction 12: AccountMosaicRestrictionTransaction with MosaicId = mosaicId
     transactions.push(AccountMosaicRestrictionTransaction.create(
       this.context.parameters.deadline,
       AccountRestrictionFlags.AllowMosaic,
@@ -340,10 +362,10 @@ export class CreateToken extends AbstractCommand {
       undefined, // maxFee 0 for inner
     ))
 
-    // Transaction 11 is issued by **target** account (multisig)
+    // Transaction 12 is issued by **target** account (multisig)
     signers.push(this.target)
 
-    // Transaction 12: MosaicGlobalRestriction with mosaicId (refId 0)
+    // Transaction 13: MosaicGlobalRestriction with mosaicId (refId 0)
     // :warning: This restricts the **mosaic** to accounts who have the 
     //           'User_Role' flag set to at least 2 ("Holder" | "Target").
     transactions.push(MosaicGlobalRestrictionTransaction.create(
@@ -359,10 +381,10 @@ export class CreateToken extends AbstractCommand {
       undefined, // maxFee 0 for inner
     ))
 
-    // Transaction 12 is issued by **target** account (multisig)
+    // Transaction 13 is issued by **target** account (multisig)
     signers.push(this.target)
 
-    // Transaction 13: MosaicAddressRestriction for target address
+    // Transaction 14: MosaicAddressRestriction for target address
     transactions.push(MosaicAddressRestrictionTransaction.create(
       this.context.parameters.deadline,
       mosaicId,
@@ -374,7 +396,7 @@ export class CreateToken extends AbstractCommand {
       undefined, // maxFee 0 for inner
     ))
 
-    // Transaction 13 is issued by the target account
+    // Transaction 14 is issued by the target account
     signers.push(this.target)
 
     // return transactions issued by assigned signer

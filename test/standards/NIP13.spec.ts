@@ -42,6 +42,14 @@ describe('NIP13 Standard --->', () => {
     expect(NIP13.Revision).to.be.equal(1)
   })
 
+  it('export Token class', () => {
+    expect(NIP13.Token).not.to.be.undefined
+  })
+
+  it('export TokenMetadata class', () => {
+    expect(NIP13.TokenMetadata).not.to.be.undefined
+  })
+
   describe('constructor() should', () => {
     it('derive default NIP13 derivation path', () => {
       // assert

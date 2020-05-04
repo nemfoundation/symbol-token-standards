@@ -11,6 +11,8 @@ The changelog format is based on [Keep a Changelog](https://keepachangelog.com/e
 - (NIP13) Added NIP13/services/TransactionService for getWithdrawals
 - (NIP13) Added NIP13 `CreateToken` transactions for 'NIP13' token identifier in AccountMetadata and MosaicMetadata
 - (NIP13) Fixed derivation index overflow in getPathForPartition
+- (NIP13) Added TransferOwnership functionality for TARGET->PARTITION & PARTITION->PARTITION
+- (NIP13) Refactored TransferOwnership with createPartition() 
 
 ## [v0.4.1][v0.4.1]
 

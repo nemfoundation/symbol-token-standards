@@ -3,6 +3,14 @@ All notable changes to this project will be documented in this file.
 
 The changelog format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [v0.4.2][v0.4.2]
+
+- (NIP13) Changed Command interface to remove synchronize and move inside Standard interface
+- (NIP13) NIP13.TokenStandard now synchronizes operators, partitions and mosaicInfo
+- (NIP13) Fixed NIP13/services/PartitionService
+- (NIP13) Added NIP13/services/TransactionService for getWithdrawals
+- (NIP13) Added NIP13 `CreateToken` transactions for 'NIP13' token identifier in AccountMetadata and MosaicMetadata
+
 ## [v0.4.1][v0.4.1]
 
 - (NIP13) Fixed multi-signature account conversion for target account

@@ -47,15 +47,6 @@ export interface Command {
   readonly descriptor: string
 
   /**
-   * Synchronize the command execution with the network. This method shall
-   * be used to fetch data required for execution.
-   *
-   * @async
-   * @return {Promise<boolean>}
-   */
-  synchronize(): Promise<boolean>
-
-  /**
    * Verifies **allowance** of `actor` to execute command.  Arguments to
    * the command execution can be passed in `argv`.
    *

@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-import {EMPTY, Observable} from 'rxjs';
-import {concatMap, expand, map, mergeMap, toArray} from 'rxjs/operators';
+import {EMPTY, Observable} from 'rxjs'
+import {concatMap, expand, map, mergeMap, toArray} from 'rxjs/operators'
 import {
   AccountRepository,
   Address,
@@ -35,7 +35,7 @@ import {
   TransactionType,
   TransferTransaction,
   UInt64,
-} from 'symbol-sdk';
+} from 'symbol-sdk'
 
 export class TransactionService {
 
@@ -46,7 +46,7 @@ export class TransactionService {
               private readonly transactionHttp: TransactionRepository,
               private readonly receiptHttp: ReceiptRepository,
               private pageSize: number) {
-    this.transactionService = new LibTransactionService(transactionHttp, receiptHttp);
+    this.transactionService = new LibTransactionService(transactionHttp, receiptHttp)
   }
 
   /* start block flattenAggregateTransactions */
@@ -68,7 +68,7 @@ export class TransactionService {
         flattenTransactions = [transaction];
       }
       return TransactionService.filterTransferTransactions(flattenTransactions);
-    }).reduce((prev, it: TransferTransaction[]) => it));
+    }).reduce((prev, it: TransferTransaction[]) => prev.concat(it)))
   }
   /* end block flattenAggregateTransactions */
 
@@ -83,7 +83,7 @@ export class TransactionService {
     : TransferTransaction[] {
     return transactions
       .filter((transaction) => (transaction.type === TransactionType.TRANSFER))
-      .map((transaction) => (transaction as TransferTransaction));
+      .map((transaction) => (transaction as TransferTransaction))
   }
   /* end block filterTransferTransactions */
 
@@ -104,11 +104,11 @@ export class TransactionService {
     } else if (transactionInfo instanceof TransactionInfo) {
       hash = transactionInfo.hash;
     }
-    return hash;
+    return hash
   }
   /* end block getTransactionHash */
 
-  /* start block filterEligibleDeposits */
+  /* start block filterElligibleDeposits */
   /**
    * Given an array of transactions, returns the ones that are eligible to be deposits.
    * A transaction is an eligible deposit when:
@@ -123,7 +123,7 @@ export class TransactionService {
    * @param tokenId Mosaic identifier to filter.
    * @returns TransferTransaction[]
    */
-  public static filterEligibleDeposits(transactions: Transaction[], exchangeAddress: Address, tokenId: MosaicId)
+  public static filterElligibleDeposits(transactions: Transaction[], exchangeAddress: Address, tokenId: MosaicId)
     : TransferTransaction[] {
     return TransactionService.filterTransferTransactions(transactions)
       .filter((transaction) => (
@@ -138,10 +138,42 @@ export class TransactionService {
       .filter((transaction) => (
         transaction.message instanceof PlainMessage
         && transaction.message.payload.length !== 0),
-      );
+      )
   }
+  /* end block filterElligibleDeposits */
 
-  /* end block filterEligibleDeposits */
+  /* start block filterElligibleWithdrawals */
+  /**
+   * Given an array of transactions, returns the ones that are eligible to be deposits.
+   * A transaction is an eligible deposit when:
+   * - It has type TRANSFER.
+   * - The signer public key is the exchange address.
+   * - Contains tokenId's units.
+   * - Does not contain mosaics different to tokenId.
+   * - The message field is not empty.
+   *
+   * @param transactions Array of transactions that could be eligible deposits.
+   * @param exchangeAddress Exchange central account address.
+   * @param tokenId Mosaic identifier to filter.
+   * @returns TransferTransaction[]
+   */
+  public static filterElligibleWithdrawals(transactions: Transaction[], exchangeAddress: Address, tokenId: MosaicId)
+  : TransferTransaction[] {
+    return TransactionService.filterTransferTransactions(transactions)
+      .filter((transaction) => (
+        transaction.signer!.address.equals(exchangeAddress)
+      ))
+      .filter((transaction) => (
+        transaction.mosaics.length === 1
+        && transaction.mosaics[0].id instanceof MosaicId
+        && transaction.mosaics[0].id.equals(tokenId)
+      ))
+      .filter((transaction) => (
+        transaction.message instanceof PlainMessage
+        && transaction.message.payload.length !== 0),
+      )
+  }
+/* end block filterElligibleWithdrawals */
 
   /* start block getDeposits */
   /**
@@ -152,7 +184,7 @@ export class TransactionService {
    * @param lastTransactionId Resource identifier of the last transaction already processed.
    * @returns Observable <TransferTransaction[]>
    */
-  public getTransfers(exchangeAddress: Address,
+  public getDeposits(exchangeAddress: Address,
                       tokenId: MosaicId,
                       requiredConfirmations: number,
                       lastTransactionId?: string)
@@ -165,10 +197,37 @@ export class TransactionService {
       mergeMap((transactions) =>
         this.filterTransactionsWithEnoughConfirmations(transactions, requiredConfirmations)),
       map((transactions) =>
-        TransactionService.filterEligibleDeposits(transactions, exchangeAddress, tokenId)),
-    );
+        TransactionService.filterElligibleDeposits(transactions, exchangeAddress, tokenId)),
+    )
   }
   /* end block getDeposits */
+
+  /* start block getWithdrawals */
+  /**
+   * Gets the transactions eligible to be withdrawals pending to be processed.
+   * @param exchangeAddress Exchange central account address.
+   * @param tokenId Mosaic identifier.
+   * @param requiredConfirmations Confirmations to consider a transaction persistent.
+   * @param lastTransactionId Resource identifier of the last transaction already processed.
+   * @returns Observable <TransferTransaction[]>
+   */
+  public getWithdrawals(exchangeAddress: Address,
+                      tokenId: MosaicId,
+                      requiredConfirmations: number,
+                      lastTransactionId?: string)
+    : Observable<TransferTransaction[]> {
+    return this.getUnprocessedTransactions(exchangeAddress, lastTransactionId).pipe(
+      mergeMap((transactions) =>
+        this.resolveTransactionsAliases(transactions)),
+      map((transactions) =>
+        TransactionService.flattenAggregateTransactions(transactions)),
+      mergeMap((transactions) =>
+        this.filterTransactionsWithEnoughConfirmations(transactions, requiredConfirmations)),
+      map((transactions) =>
+        TransactionService.filterElligibleWithdrawals(transactions, exchangeAddress, tokenId)),
+    )
+  }
+  /* end block getWithdrawals */
 
   /* start block getUnprocessedTransactions */
   /**
@@ -202,7 +261,7 @@ export class TransactionService {
           return EMPTY;
         }),
         concatMap((_) => _),
-        toArray());
+        toArray())
   }
   /* end block getUnprocessedTransactions */
 
@@ -222,7 +281,7 @@ export class TransactionService {
         return (currentHeight.subtract(transactionHeight)
           .compare(UInt64.fromUint(requiredConfirmations)) >= 0);
       }))
-    );
+    )
   }
   /* end block filterTransactionsWithEnoughConfirmations */
 
@@ -236,8 +295,8 @@ export class TransactionService {
     : Observable<Transaction[]> {
     const transactionHashes = transactions.map(
       ((transaction) => transaction.transactionInfo!.hash
-    )) as string[];
-    return this.transactionService.resolveAliases(transactionHashes);
+    )) as string[]
+    return this.transactionService.resolveAliases(transactionHashes)
   }
   /* end block resolveTransactionsAliases */
 

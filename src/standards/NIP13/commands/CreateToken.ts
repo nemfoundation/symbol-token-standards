@@ -38,6 +38,7 @@ import {
   AccountRestrictionFlags,
   MosaicGlobalRestrictionTransaction,
   MosaicAddressRestrictionTransaction,
+  AccountMetadataTransaction,
 } from 'symbol-sdk'
 
 // internal dependencies
@@ -53,27 +54,31 @@ import { SecuritiesMetadata } from '../models/SecuritiesMetadata'
  * @transactions This token command prepares one aggregate bonded transaction with following inner transactions:
  *   - Transaction 01: TransferTransaction with NIP13 `CreateToken` command descriptor
  *   - Transaction 02: MultisigAccountModificationTransaction
- *   - Transaction 03: NamespaceRegistrationtTransaction
- *   - Transaction 04: MosaicDefinitionTransaction
- *   - Transaction 05: MosaicSupplyChangeTransaction
- *   - Transaction 06: MosaicAliasTransaction
- *   - Transaction 07: MosaicMetadataTransaction attaching `NAME`
- *   - Transaction 08: MosaicMetadataTransaction attaching `MIC` market identifier code
- *   - Transaction 09: MosaicMetadataTransaction attaching `ISIN` if non-empty option provided
- *   - Transaction 10: MosaicMetadataTransaction attaching `ISO_10962` if non-empty option provided
- *   - Transaction 11: MosaicMetadataTransaction attaching custom metadata if non-empty option provided
- *   - Transaction 12: AccountMosaicRestrictionTransaction with targets = [mosaicId, feeMosaicId] to allow mosaic and fees for TARGET account
- *   - Transaction 13: MosaicGlobalRestriction with mosaicId (refId 0) (User_Role <= 2)
- *   - Transaction 14: MosaicAddressRestriction for target account (User_Role = Target)
+ *   - Transaction 03: AccountMetadataTransaction attaching `NIP13` token identifier
+ *   - Transaction 04: NamespaceRegistrationtTransaction
+ *   - Transaction 05: MosaicDefinitionTransaction
+ *   - Transaction 06: MosaicSupplyChangeTransaction
+ *   - Transaction 07: MosaicAliasTransaction
+ *   - Transaction 08: MosaicMetadataTransaction attaching `NIP13` token identifier
+ *   - Transaction 09: MosaicMetadataTransaction attaching `NAME`
+ *   - Transaction 10: MosaicMetadataTransaction attaching `MIC` market identifier code
+ *   - Transaction 11: MosaicMetadataTransaction attaching `ISIN` if non-empty option provided
+ *   - Transaction 12: MosaicMetadataTransaction attaching `ISO_10962` if non-empty option provided
+ *   - Transaction 13: MosaicMetadataTransaction attaching custom metadata if non-empty option provided
+ *   - Transaction 14: AccountMosaicRestrictionTransaction with targets = [mosaicId, feeMosaicId] to allow mosaic and fees for TARGET account
+ *   - Transaction 15: MosaicGlobalRestriction with mosaicId (refId 0) (User_Role <= 2)
+ *   - Transaction 16: MosaicAddressRestriction for target account (User_Role = Target)
  *
- * :note: `Transaction 03` represents the root namespace registration transaction. Any sub namespace registration
+ * :note: `Transaction 04` represents the root namespace registration transaction. Any sub namespace registration
  * transaction will be automatically added to this list.
  *
- * :note: `Transaction 07` will only be added if a non-empty value is provided for the `source` command option.
+ * :note: `Transaction 10` will only be added if a non-empty value is provided for the `source` command option.
  *
- * :note: `Transaction 08` will only be added if a non-empty value is provided for the `isin` command option.
+ * :note: `Transaction 11` will only be added if a non-empty value is provided for the `isin` command option.
  *
- * :note: `Transaction 09` will only be added if a non-empty value is provided for the `iso10962` command option.
+ * :note: `Transaction 12` will only be added if a non-empty value is provided for the `iso10962` command option.
+ *
+ * :note: `Transaction 13` will only be added if a non-empty value is provided for custom metadata fields.
  */
 export class CreateToken extends AbstractCommand {
   /**
@@ -191,6 +196,20 @@ export class CreateToken extends AbstractCommand {
     // Transaction 02 is issued by **target** account (multisig)
     signers.push(this.target)
 
+    // Transaction 03: AccountMetadataTransaction
+    transactions.push(AccountMetadataTransaction.create(
+      this.context.parameters.deadline,
+      this.target.publicKey,
+      KeyGenerator.generateUInt64Key('NIP13'),
+      this.identifier.id.length,
+      this.identifier.id,
+      this.context.network.networkType,
+      undefined, // maxFee 0 for inner
+    ))
+
+    // Transaction 03 is issued by **partition** account
+    signers.push(this.target)
+
     // Transaction 03: NamespaceRegistrationtTransaction
     // :note: up to `maxNamespacesDepth` levels are allowed
     const parts = fullName.split('.')
@@ -266,7 +285,22 @@ export class CreateToken extends AbstractCommand {
     // Transaction 06 is issued by **target** account (multisig)
     signers.push(this.target)
 
-    // Transaction 07: MosaicMetadataTransaction attaching `MIC` market identifier code
+    // Transaction 07: MosaicMetadataTransaction attaching `NAME`
+    transactions.push(MosaicMetadataTransaction.create(
+      this.context.parameters.deadline,
+      this.target.publicKey,
+      KeyGenerator.generateUInt64Key('NIP13'),
+      mosaicId,
+      this.identifier.id.length,
+      this.identifier.id,
+      this.context.network.networkType,
+      undefined, // maxFee 0 for inner
+    ))
+
+    // Transaction 07 is issued by **target** account (multisig)
+    signers.push(this.target)
+
+    // Transaction 07: MosaicMetadataTransaction attaching `NAME`
     transactions.push(MosaicMetadataTransaction.create(
       this.context.parameters.deadline,
       this.target.publicKey,

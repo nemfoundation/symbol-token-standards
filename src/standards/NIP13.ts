@@ -18,6 +18,8 @@ import {
   Convert,
   PublicAccount,
   SHA3Hasher,
+  MultisigAccountInfo,
+  MosaicInfo,
 } from 'symbol-sdk'
 import {
   MnemonicPassPhrase,
@@ -43,6 +45,9 @@ import {
 } from '../../index'
 import { SecuritiesMetadata } from './NIP13/models/SecuritiesMetadata'
 import { Accountable } from './NIP13/contracts/Accountable'
+import { MultisigService } from './NIP13/services/MultisigService'
+import { PartitionService } from './NIP13/services/PartitionService'
+import { AbstractCommand } from './NIP13/commands/AbstractCommand'
 
 export namespace NIP13 {
 
@@ -115,6 +120,21 @@ export namespace NIP13 {
     public source: TokenSource
 
     /**
+     * @description Mosaic information (read from network).
+     */
+    public mosaicInfo: MosaicInfo | undefined
+
+    /**
+     * @description List of operators of said token.
+     */
+    public operators: PublicAccount[] = []
+
+    /**
+     * @description Partition records of said token.
+     */
+    public partitions: TokenPartition[] = []
+
+    /**
      * @description Last token command execution result. URIs must be executed
      *              outside of the token standard.
      */
@@ -147,6 +167,72 @@ export namespace NIP13 {
     }
 
     /**
+     * Getter for the deterministic token identifier.
+     *
+     * @return {TokenIdentifier}
+     */
+    public get identifier(): TokenIdentifier {
+      // prepare deterministic token identifier
+      const hash = new Uint8Array(64)
+      const data = this.target.address.plain() + '-' + this.source.source
+      SHA3Hasher.func(hash, Convert.utf8ToUint8(data), 64)
+
+      // 4 left-most bytes for the identifier
+      const left4b: string = hash.slice(0, 4).reduce(
+        (s, b) => s + b.toString(16).padStart(2, '0'),
+        '', // initialValue
+      )
+
+      return new TokenIdentifier(left4b, this.source, this.target)
+    }
+
+    /**
+     * Synchronize the command execution with the network. This method shall
+     * be used to fetch data required for execution.
+     *
+     * @async
+     * @return {Promise<boolean>}
+     */
+    public async synchronize(): Promise<boolean> {
+      // prepare
+      const target = this.target.address
+      const context = this.getContext(this.target, new TransactionParameters())
+      const multisig = new MultisigService(context)
+      const partitions = new PartitionService(context)
+
+      // initialize REST
+      const multisigHttp = context.network.factoryHttp.createMultisigRepository()
+      const mosaicHttp   = context.network.factoryHttp.createMosaicRepository()
+
+      // consolidate/reduce graph
+      const graph = await multisigHttp.getMultisigAccountGraphInfo(target).toPromise()
+      this.operators = multisig.getMultisigAccountInfoFromGraph(graph).map(
+        m => m.cosignatories
+      ).reduce((prev, it) => prev.concat(it))
+
+      console.log("OPERATORS: ", this.operators)
+
+      // read mosaic
+      this.mosaicInfo = await mosaicHttp.getMosaic(this.identifier.toMosaicId()).toPromise()
+
+      console.log("MOSAIC: ", this.mosaicInfo)
+
+      // read partitions
+      this.partitions = await partitions.getPartitionsFromNetwork(
+        context.network.factoryHttp,
+        this.identifier,
+        this.target,
+        this.operators,
+        'NIP13(v' + context.revision + '):transfer:' + this.identifier.id + ':' // label after this
+      )
+
+      console.log("PARTITIONS: ", this.partitions)
+
+      // success exit
+      return true
+    }
+
+    /**
      * Creates a new NIP13 Token and configures operators.
      *
      * @param   {string}                name
@@ -166,22 +252,8 @@ export namespace NIP13 {
       parameters: TransactionParameters,
     ): TokenIdentifier {
 
-      // prepare deterministic token identifier
-      const hash = new Uint8Array(64)
-      const data = this.target.address.plain()
-                 + '-' + supply.toString()
-                 + '-' + name
-                 + '-' + this.source.source
-                 + '-' + operators.map((p) => p.address.plain()).join(',')
-      SHA3Hasher.func(hash, Convert.utf8ToUint8(data), 64)
-
-      // 4 left-most bytes for the mosaic nonce
-      const left4b: string = hash.slice(0, 4).reduce(
-        (s, b) => s + b.toString(16).padStart(2, '0'),
-        '', // initialValue
-      )
-
-      const tokenId = new TokenIdentifier(left4b, this.source, this.target)
+      // generate deterministic token identifier
+      const tokenId = this.identifier
 
       // execute token command `CreateToken`
       this.result = this.execute(actor, tokenId, 'CreateToken', parameters, [
@@ -200,25 +272,33 @@ export namespace NIP13 {
      *
      * @internal This method MUST use the `TransferOwnership` command.
      * @param   {PublicAccount}         actor
-     * @param   {TokenIdentifier}       tokenId
      * @param   {PublicAccount}         partition
      * @param   {PublicAccount}         sender
      * @param   {PublicAccount}         recipient
+     * @param   {string}                label
      * @param   {number}                amount
      * @param   {TransactionParameters} parameters
      * @return  {TransactionURI}
      **/
-    public transfer(
+    public async transfer(
       actor: PublicAccount,
-      tokenId: TokenIdentifier,
       partition: PublicAccount,
       sender: PublicAccount,
       recipient: PublicAccount,
+      label: string,
       amount: number,
       parameters: TransactionParameters,
-    ): TransactionURI {
+    ): Promise<TransactionURI> {
+
+      // read state from REST API
+      await this.synchronize()
+
+      // generate deterministic token identifier
+      const tokenId = this.identifier
+
       // execute token command `TransferOwnership`
       this.result = this.execute(actor, tokenId, 'TransferOwnership', parameters, [
+        new CommandOption('name', label),
         new CommandOption('sender', sender),
         new CommandOption('partition', partition),
         new CommandOption('recipient', recipient),
@@ -278,7 +358,12 @@ export namespace NIP13 {
       // instanciate command and context
       const params = new TransactionParameters()
       const context = this.getContext(actor, params, argv)
-      const cmdFn = this.getCommand(tokenId, command, context)
+      const cmdFn = this.getCommand(tokenId, command, context) as AbstractCommand
+
+      // populate async data
+      cmdFn.mosaicInfo = this.mosaicInfo
+      cmdFn.operators = this.operators
+      cmdFn.partitions = this.partitions
 
       // use `canExecute` for token command
       return cmdFn.canExecute(actor, argv)
@@ -305,7 +390,12 @@ export namespace NIP13 {
       try {
         // instanciate command and context
         const context = this.getContext(actor, parameters, argv)
-        const cmdFn = this.getCommand(tokenId, command, context)
+        const cmdFn = this.getCommand(tokenId, command, context) as AbstractCommand
+
+        // populate async data
+        cmdFn.mosaicInfo = this.mosaicInfo
+        cmdFn.operators = this.operators
+        cmdFn.partitions = this.partitions
 
         // execute token command
         return cmdFn.execute(actor, argv)

@@ -70,7 +70,8 @@ export class Accountable {
   /**
    * Derive a child account
    *
-   * @param {string}      derivationPath 
+   * @param {string}    derivationPath
+   * @return {Account}
    */
   protected getAccount(
     derivationPath: string,
@@ -83,6 +84,8 @@ export class Accountable {
 
   /**
    * Derive a **target** account
+   *
+   * @return {Account}
    */
   public getTarget(): Account {
     return this.getAccount(DerivationHelpers.PATH_NIP13)
@@ -93,6 +96,7 @@ export class Accountable {
    *
    * @internal Operator account derivation paths use the REMOTE (BIP44=CHANGE) path level.
    * @param {number}  at
+   * @return {Account}
    */
   public getOperator(
     at: number = 1
@@ -109,12 +113,27 @@ export class Accountable {
   /**
    * Derive a **partition** account
    *
-   * @internal Operator account derivation paths use the ADDRESS path level.
+   * @internal Partition account derivation paths use the ADDRESS path level.
    * @param {PublicAccount}  owner
+   * @return {Account}
    */
   public getPartition(
     owner: PublicAccount
   ): Account {
+    const path = this.getPathForPartition(owner)
+    return this.getAccount(path)
+  }
+
+  /**
+   * Get the BIP44 path for a partition owned by `owner`
+   *
+   * @internal Partition account derivation paths use the ADDRESS path level.
+   * @param {PublicAccount} owner 
+   * @return {string}
+   */
+  public getPathForPartition(
+    owner: PublicAccount,
+  ): string {
     // prepare derivation
     const start = DerivationHelpers.PATH_NIP13
     const level = DerivationHelpers.DerivationPathLevels.Address
@@ -131,7 +150,6 @@ export class Accountable {
     ), 16)
 
     // derive partition
-    const path = DerivationHelpers.incrementPathLevel(start, level, right4b)
-    return this.getAccount(path)
+    return DerivationHelpers.incrementPathLevel(start, level, right4b)
   }
 }

@@ -42,6 +42,20 @@ export interface Standard {
   readonly network: NetworkConfig
 
   /**
+   * @description The token identifier
+   */
+  readonly identifier: TokenIdentifier
+
+  /**
+   * Synchronize the command execution with the network. This method shall
+   * be used to fetch data required for execution.
+   *
+   * @async
+   * @return {Promise<boolean>}
+   */
+  synchronize(): Promise<boolean>
+
+  /**
    * Notify an account `account` about `notification`
    *
    * @param   {TokenIdentifier} tokenId

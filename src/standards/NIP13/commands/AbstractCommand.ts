@@ -52,7 +52,7 @@ export abstract class AbstractCommand extends BaseCommand {
   /**
    * @description List of operators of said token.
    */
-  public operators: MultisigAccountInfo[] = []
+  public operators: PublicAccount[] = []
 
   /**
    * @description Mosaic information (read from network).
@@ -119,44 +119,6 @@ export abstract class AbstractCommand extends BaseCommand {
   // end-region abstract methods
 
   /**
-   * Synchronize the command execution with the network. This method shall
-   * be used to fetch data required for execution.
-   *
-   * @async
-   * @return {Promise<boolean>}
-   */
-  public async synchronize(): Promise<boolean> {
-    // prepare
-    const target = this.target.address
-    const multisig = new MultisigService(this.context)
-    const partitions = new PartitionService(this.context)
-
-    // initialize REST
-    const multisigHttp = this.context.network.factoryHttp.createMultisigRepository()
-    const mosaicHttp   = this.context.network.factoryHttp.createMosaicRepository()
-    const accountHttp  = this.context.network.factoryHttp.createAccountRepository()
-
-    // consolidate/reduce graph
-    const graph = await multisigHttp.getMultisigAccountGraphInfo(target).toPromise()
-    this.operators = multisig.getMultisigAccountInfoFromGraph(graph)
-
-    // read mosaic
-    this.mosaicInfo = await mosaicHttp.getMosaic(this.identifier.toMosaicId()).toPromise()
-
-    // read partitions
-    this.partitions = await partitions.getPartitionsFromNetwork(
-      this.context.network.factoryHttp,
-      this.identifier,
-      this.target,
-      this.operators,
-      'NIP13(v' + this.context.revision + '):transfer:' + this.identifier.id + ':' // label after this
-    )
-
-    // success exit
-    return true
-  }
-
-  /**
    * @description Method that verifies the allowance of an operator to 
    *              execute the token command `TransferOwnership`.
    * @see {BaseCommand.canExecute}
@@ -169,11 +131,9 @@ export abstract class AbstractCommand extends BaseCommand {
     super.assertHasMandatoryArguments(argv, this.arguments)
 
     // by default, only operators can execute commands
-    const isOperator = undefined !== this.operators.find(
-      (msig: MultisigAccountInfo) => {
-        return msig.cosignatories
-          .map((c) => c.publicKey)
-          .includes(actor.publicKey)
+    const isOperator = this.operators.some(
+      (p: PublicAccount) => {
+        return p.publicKey === actor.publicKey
       })
 
     // allows only operators to transfer ownership tokens

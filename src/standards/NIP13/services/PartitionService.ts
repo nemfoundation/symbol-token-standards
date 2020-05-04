@@ -22,6 +22,7 @@ import {
   TransactionType,
   TransferTransaction,
   Convert,
+  Address,
 } from 'symbol-sdk'
 
 // internal dependencies
@@ -52,31 +53,12 @@ export class PartitionService extends Service {
     factory: RepositoryFactoryHttp,
     tokenId: TokenIdentifier,
     target: PublicAccount,
-    operators: MultisigAccountInfo[],
+    operators: PublicAccount[],
     descriptor: string = '',
   ): Promise<TokenPartition[]> {
-    // prepare output
-    const partitions: TokenPartition[] = []
-    const accounts: PublicAccount[] = []
-
-    // Step 1) reduce operators to read partition accounts
-    operators.map(
-      (operator: MultisigAccountInfo) => operator.multisigAccounts
-    ).reduce((prev, it) => {
-      // filter out target
-      return accounts.concat(it.filter(
-        p => !p.address.equals(target.address)
-      ))
-    })
-
-    // Step 2) read accounts from network
+    // initialize APIs
     const accountHttp = factory.createAccountRepository()
     const multisigHttp = factory.createMultisigRepository()
-    const infos = await accountHttp.getAccountsInfo(
-      accounts.map(pub => pub.address)
-    ).toPromise()
-
-    // initialize transactions service
     const multisig = new MultisigService(this.context)
     const service = new TransactionService(
       accountHttp,
@@ -86,6 +68,29 @@ export class PartitionService extends Service {
       100
     )
 
+    // prepare output
+    const partitions: TokenPartition[] = []
+
+    // Step 1) read transfers to find partition accounts
+    const transactions: TransferTransaction[] = await service.getWithdrawals(
+      target.address,
+      tokenId.toMosaicId(),
+      0, // no more than 1 block confirmation required
+    ).toPromise()
+
+    // filter partition transfer transactions
+    const markedTransfers: TransferTransaction[] = transactions.filter(
+      tx => tx.message.payload.startsWith(descriptor)
+    )
+
+    // read recipients to find partition accounts
+    const addresses: Address[] = markedTransfers.map(t => t.recipientAddress as Address).filter(
+      addr => !addr.equals(target.address)
+    )
+
+    // Step 2) read partition accounts information from network
+    const infos = await accountHttp.getAccountsInfo(addresses).toPromise()
+
     // Step 3) iterate partition accounts
     for (let i = 0, m = infos.length; i < m; i ++) {
       const accountInfo: AccountInfo = infos[i]
@@ -93,25 +98,16 @@ export class PartitionService extends Service {
       // Step 3.1) get partition account multisig graph
       const graph = await multisigHttp.getMultisigAccountGraphInfo(accountInfo.address).toPromise()
       const owner: PublicAccount = multisig.getMultisigAccountInfoFromGraph(graph).map(
-        (cosig: MultisigAccountInfo) => cosig.multisigAccounts
+        (cosig: MultisigAccountInfo) => cosig.cosignatories
       ).reduce((prev, it) => {
         // filter out operators
-        const ops = operators.map(o => o.account.address.plain())
-        return prev.concat(it.filter(
-          c => !ops.includes(c.address.plain())
-        ))
+        const ops = operators.map(o => o.address.plain())
+        return prev.concat(it.filter(c => !ops.includes(c.address.plain())))
       })[0] // force one
 
       // Step 3.2) fetch partition account incoming transaction
-      const transactions: TransferTransaction[] = await service.getTransfers(
-        accountInfo.address,
-        tokenId.toMosaicId(),
-        10,
-      ).toPromise()
-
-      // filter partition label transaction (take latest)
-      const lastMarker = transactions.filter(
-        tx => tx.message.payload.startsWith(Convert.utf8ToHex(descriptor))
+      const lastMarker = markedTransfers.filter(
+        tx => (tx.recipientAddress as Address).equals(accountInfo.address)
       ).shift()
 
       if (lastMarker === undefined) {

@@ -52,6 +52,8 @@ export class TransferOwnership extends AbstractCommand {
    * @description List of **required** arguments for this token command.
    */
   public arguments: string[] = [
+    'name',
+    'sender',
     'partition',
     'recipient',
     'amount',
@@ -104,9 +106,8 @@ export class TransferOwnership extends AbstractCommand {
         this.context.parameters.deadline,
         this.operators.length, // all operators for minApproval (recipient is optional)
         this.operators.length, // all except one for minRemoval (recipient is optional)
-        this.operators
-            .map(op => op.account)
-            .concat([recipient]),
+        this.operators // operators
+            .concat([recipient]), // + recipient
         [],
         this.context.network.networkType,
         undefined, // maxFee 0 for inner
@@ -196,7 +197,7 @@ export class TransferOwnership extends AbstractCommand {
         // Transaction 2.1.01: Add ownership transfer transaction
         transactions.push(TransferTransaction.create(
           this.context.parameters.deadline,
-          recipient.address,
+          recipient.address, // new partition
           [
             new Mosaic(
               this.identifier.toMosaicId(),

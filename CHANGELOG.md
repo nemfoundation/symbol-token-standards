@@ -10,6 +10,7 @@ The changelog format is based on [Keep a Changelog](https://keepachangelog.com/e
 - (NIP13) Fixed NIP13/services/PartitionService
 - (NIP13) Added NIP13/services/TransactionService for getWithdrawals
 - (NIP13) Added NIP13 `CreateToken` transactions for 'NIP13' token identifier in AccountMetadata and MosaicMetadata
+- (NIP13) Fixed derivation index overflow in getPathForPartition
 
 ## [v0.4.1][v0.4.1]
 

@@ -143,13 +143,15 @@ export class Accountable {
     const data = owner.address.plain()
     SHA3Hasher.func(hash, Convert.utf8ToUint8(data), 64)
 
-    // 4 right-most bytes (checksum) for partition id
-    const right4b = parseInt(hash.slice(-4).reduce(
+    // 3 right-most bytes for partition id
+    // :warning: cannot be more than 3 bytes because of hardened
+    //           derivation index overflow at 2147483647 (2^31-1)
+    const right3b = parseInt(hash.slice(-3).reduce(
       (s, b) => s + b.toString(16).padStart(2, '0'),
       '', // initialValue
     ), 16)
 
     // derive partition
-    return DerivationHelpers.incrementPathLevel(start, level, right4b)
+    return DerivationHelpers.incrementPathLevel(start, level, right3b)
   }
 }

@@ -210,12 +210,8 @@ export namespace NIP13 {
         m => m.cosignatories
       ).reduce((prev, it) => prev.concat(it))
 
-      console.log("OPERATORS: ", this.operators)
-
       // read mosaic
       this.mosaicInfo = await mosaicHttp.getMosaic(this.identifier.toMosaicId()).toPromise()
-
-      console.log("MOSAIC: ", this.mosaicInfo)
 
       // read partitions
       this.partitions = await partitions.getPartitionsFromNetwork(
@@ -225,8 +221,6 @@ export namespace NIP13 {
         this.operators,
         'NIP13(v' + context.revision + '):transfer:' + this.identifier.id + ':' // label after this
       )
-
-      console.log("PARTITIONS: ", this.partitions)
 
       // success exit
       return true

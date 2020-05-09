@@ -19,7 +19,6 @@ import {
   PublicAccount,
   TransferTransaction,
   PlainMessage,
-  Address,
   Mosaic,
   UInt64,
   MultisigAccountModificationTransaction,
@@ -33,20 +32,37 @@ import {
 
 // internal dependencies
 import { AbstractCommand } from './AbstractCommand'
-import { TokenPartition } from '../../../models/TokenPartition'
 
 /**
  * @class NIP13.TransferOwnership
  * @package NIP13 Token Commands
  * @since v0.1.0
- * @description Class that describes a token command for publishing NIP13 compliant tokens.
+ * @description Class that describes a token command for transferring NIP13 compliant tokens.
  * @summary This token command prepares one aggregate bonded transaction with following inner transactions:
- *   - Transaction 01: TransferTransaction with NIP13 `TransferOwnership` command descriptor
- *   - Transaction 02: MultisigAccountModificationTransaction
- *   - Transaction 03: AccountMosaicRestrictionTransaction with MosaicId = mosaicId to allow mosaic for PARTITION account
- *   - Transaction 04: AccountMosaicRestrictionTransaction with MosaicId = feeMosaicId to allow fees for PARTITION account
- *   - Transaction 05: MosaicAddressRestriction for partition account (User_Role = Holder)
- *   - Transaction 06: TransferTransaction with NIP13 `TransferOwnership` command descriptor (initial partitioning)
+ *
+ * 1) sending from **target** account, should create new partition multisig + transfer
+ *   - Transaction 1.01: MultisigAccountModificationTransaction
+ *   - Transaction 1.02: AccountMetadataTransaction attaching `NAME`
+ *   - Transaction 1.03: AccountMosaicRestrictionTransaction for mosaicId & fee
+ *   - Transaction 1.04: MosaicAddressRestriction with `User_Role = Holder` for partition
+ *   - Transaction 1.05: Add ownership transfer transaction
+ *
+ * 2) sending from **partition** account (not target account), should change ownership
+ *    from **owner** to **recipient**
+ *
+ *   2.1) In case the new recipient is another partition, the amount must be sent back to
+ *        the target account, then send to the new partition account.
+ *   - Transaction 2.1.01: First send back the amount to the target account
+ *   - Transaction 2.1.02: Add ownership transfer transaction
+ *
+ *   2.2) In case the new recipient is not a partition, a new partition will be created and
+ *        the amount will be transferred to it.
+ *   - Transaction 2.2.01: MultisigAccountModificationTransaction
+ *   - Transaction 2.2.02: AccountMetadataTransaction attaching `NAME`
+ *   - Transaction 2.2.03: AccountMosaicRestrictionTransaction for mosaicId & fee
+ *   - Transaction 2.2.04: MosaicAddressRestriction with `User_Role = Holder` for partition
+ *   - Transaction 2.2.05: First send back the amount to the target account
+ *   - Transaction 2.2.06: Add ownership transfer transaction
  */
 export class TransferOwnership extends AbstractCommand {
   /**
@@ -210,7 +226,7 @@ export class TransferOwnership extends AbstractCommand {
           signers.push(payload.signers[i])
         })
 
-        // Transaction 2.1.05: First send back the amount to the target account
+        // Transaction 2.2.05: First send back the amount to the target account
         transactions.push(TransferTransaction.create(
           this.context.parameters.deadline,
           this.target.address, // back to target account (non-transferrable)
@@ -225,7 +241,7 @@ export class TransferOwnership extends AbstractCommand {
           undefined,
         ))
 
-        // Transaction 2.1.05 is issued by **sender** account
+        // Transaction 2.2.05 is issued by **sender** account
         signers.push(sender)
 
         // Transaction 2.2.06: Add ownership transfer transaction

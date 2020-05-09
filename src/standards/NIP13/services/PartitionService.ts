@@ -16,12 +16,8 @@
 import {
   MultisigAccountInfo,
   PublicAccount,
-  RepositoryFactoryHttp,
   AccountInfo,
-  Transaction,
-  TransactionType,
   TransferTransaction,
-  Convert,
   Address,
 } from 'symbol-sdk'
 
@@ -45,26 +41,27 @@ export class PartitionService extends Service {
    * Read token partitions from token operators
    * network information.
    *
+   * @param {TokenIdentifier}       tokenId     The token identifier.
    * @param {PublicAccount}         target      The deterministic account that represents the token.
-   * @param {MultisigAccountInfo[]} operators   The list of operators of said token.
-   * @return {MultisigAccountInfo[]}
+   * @param {PublicAccount[]}       operators   The list of operators of said token.
+   * @param {string}                descriptor  The token command descriptor used as a marker.
+   * @return {TokenPartition[]}
    */
   public async getPartitionsFromNetwork(
-    factory: RepositoryFactoryHttp,
     tokenId: TokenIdentifier,
     target: PublicAccount,
     operators: PublicAccount[],
     descriptor: string = '',
   ): Promise<TokenPartition[]> {
     // initialize APIs
-    const accountHttp = factory.createAccountRepository()
-    const multisigHttp = factory.createMultisigRepository()
+    const accountHttp = this.context.network.factoryHttp.createAccountRepository()
+    const multisigHttp = this.context.network.factoryHttp.createMultisigRepository()
     const multisig = new MultisigService(this.context)
     const service = new TransactionService(
       accountHttp,
-      factory.createChainRepository(),
-      factory.createTransactionRepository(),
-      factory.createReceiptRepository(),
+      this.context.network.factoryHttp.createChainRepository(),
+      this.context.network.factoryHttp.createTransactionRepository(),
+      this.context.network.factoryHttp.createReceiptRepository(),
       100
     )
 

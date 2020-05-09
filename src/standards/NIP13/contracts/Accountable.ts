@@ -28,9 +28,9 @@ import {
 
 // internal dependencies
 import {
-  DerivationHelpers,
   NetworkConfig,
 } from '../../../../index'
+import { Derivation } from '../services/HDService'
 
 /**
  * @class Accountable
@@ -83,12 +83,21 @@ export class Accountable {
   }
 
   /**
+   * Derive an **authority** account
+   *
+   * @return {Account}
+   */
+  public getAuthority(): Account {
+    return this.getAccount(Derivation.AUTH_NIP13)
+  }
+
+  /**
    * Derive a **target** account
    *
    * @return {Account}
    */
   public getTarget(): Account {
-    return this.getAccount(DerivationHelpers.PATH_NIP13)
+    return this.getAccount(Derivation.PATH_NIP13)
   }
 
   /**
@@ -102,11 +111,11 @@ export class Accountable {
     at: number = 1
   ): Account {
     // prepare derivation
-    const start = DerivationHelpers.PATH_NIP13
-    const level = DerivationHelpers.DerivationPathLevels.Remote
+    const start = Derivation.PATH_NIP13
+    const level = Derivation.DerivationPathLevels.Remote
 
     // derive operator
-    const path = DerivationHelpers.incrementPathLevel(start, level, at)
+    const path = Derivation.HDService.incrementPathLevel(start, level, at)
     return this.getAccount(path)
   }
 
@@ -135,8 +144,8 @@ export class Accountable {
     owner: PublicAccount,
   ): string {
     // prepare derivation
-    const start = DerivationHelpers.PATH_NIP13
-    const level = DerivationHelpers.DerivationPathLevels.Address
+    const start = Derivation.PATH_NIP13
+    const level = Derivation.DerivationPathLevels.Address
 
     // prepare deterministic
     const hash = new Uint8Array(64)
@@ -152,6 +161,6 @@ export class Accountable {
     ), 16)
 
     // derive partition
-    return DerivationHelpers.incrementPathLevel(start, level, right3b)
+    return Derivation.HDService.incrementPathLevel(start, level, right3b)
   }
 }

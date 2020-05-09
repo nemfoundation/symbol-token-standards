@@ -18,7 +18,6 @@
 export { FailureCommandExecution } from './src/errors/FailureCommandExecution'
 export { FailureOperationForbidden } from './src/errors/FailureOperationForbidden'
 export { FailureMinimumRequiredOperators } from './src/errors/FailureMinimumRequiredOperators'
-export { FailureInvalidDerivationPath } from './src/errors/FailureInvalidDerivationPath'
 export { FailureInvalidCommand } from './src/errors/FailureInvalidCommand'
 export { FailureMissingArgument } from './src/errors/FailureMissingArgument'
 
@@ -34,9 +33,6 @@ export { TokenPartition } from './src/models/TokenPartition'
 export { TokenSource } from './src/models/TokenSource'
 export { TransactionParameters } from './src/models/TransactionParameters'
 
-// helpers
-export { Derivation as DerivationHelpers } from './src/helpers/Derivation'
-
 // contracts
 export { Context } from './src/contracts/Context'
 export { Command } from './src/contracts/Command'
@@ -45,4 +41,5 @@ export { BaseCommand } from './src/contracts/BaseCommand'
 export { Standard } from './src/contracts/Standard'
 
 // standards
-export { NIP13 } from './src/standards/NIP13'
+import * as NIP13 from './src/standards/NIP13'
+export { NIP13 }

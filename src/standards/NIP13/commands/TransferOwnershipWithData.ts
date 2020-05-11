@@ -21,29 +21,40 @@ import {
   PlainMessage,
   Mosaic,
   UInt64,
+  MultisigAccountModificationTransaction,
+  AccountMosaicRestrictionTransaction,
+  AccountRestrictionFlags,
+  MosaicAddressRestrictionTransaction,
+  KeyGenerator,
+  AccountMetadataTransaction,
+  EmptyMessage,
 } from 'symbol-sdk'
 
 // internal dependencies
-import { AbstractCommand } from './AbstractCommand'
+import { TransferOwnership } from './TransferOwnership'
 
 /**
- * @class NIP13.UnlockBalance
+ * @class NIP13.TransferOwnershipWithData
  * @package NIP13 Token Commands
- * @since v0.5.0
- * @description Class that describes a token command for unlocking (part of) balances of NIP13 compliant tokens.
+ * @since v0.1.0
+ * @description Class that describes a token command for transferring NIP13 compliant tokens and attaching data.
  * @summary This token command prepares one aggregate bonded transaction with following inner transactions:
  *
- *  - Transaction 01: First send back the amount to the target account
- *  - Transaction 02: Add ownership transfer transaction to partition
+ * @see TransferOwnership Transactions of the parent class are prepended to this command's transactions.
+ *  - Transaction 01: Execution proof transaction
+ *  - Transaction 02: Attaching signed data
  */
-export class UnlockBalance extends AbstractCommand {
+export class TransferOwnershipWithData extends TransferOwnership {
   /**
    * @description List of **required** arguments for this token command.
    */
   public arguments: string[] = [
+    'name',
+    'sender',
     'partition',
-    'locker',
+    'recipient',
     'amount',
+    'data',
   ]
 
   // region abstract methods
@@ -52,7 +63,7 @@ export class UnlockBalance extends AbstractCommand {
    * @see {BaseCommand.name}
    **/
   public get name(): string {
-    return 'UnlockBalance'
+    return 'TransferOwnershipWithData'
   }
 
   /**
@@ -60,52 +71,43 @@ export class UnlockBalance extends AbstractCommand {
    *
    * @return {string}
    **/
-  public get descriptor(): string {
-    return 'NIP13(v' + this.context.revision + ')' + ':unlock:' + this.identifier.id
-  }
-
-  /**
-   * Getter for the command descriptor.
-   *
-   * @return {string}
-   **/
-  public get transferDescriptor(): string {
-    return 'NIP13(v' + this.context.revision + ')' + ':transfer:' + this.identifier.id
+  public get dataDescriptor(): string {
+    return 'NIP13(v' + this.context.revision + ')' + ':data:' + this.identifier.id
   }
 
   /**
    * @description Builds the inner transactions necessary for the
-   *              execution of a `UnlockBalance` command.
+   *              execution of a `TransferOwnershipWithData` command.
    * @see {AbstractCommand.transactions}
    * @return {Transaction[]} Aggregate bonded transaction
    **/
   protected get transactions(): Transaction[] {
+    // TransferOwnershipWithData extends TransferOwnership
+    const parentTransactions = super.transactions
+
     // read external arguments
     const partition = this.context.getInput('partition', new PublicAccount())
-    const locker = this.context.getInput('locker', new PublicAccount())
-    const amount = this.context.getInput('amount', 0)
+    const plainData = this.context.getInput('data', '')
 
     // find partition
     const the_partition = this.partitions.find(
       p => p.account.address.equals(partition.address)
     )
 
-    // 'UnlockBalance' is only possible for existing partitions
-    if (undefined === the_partition) {
-      // the partition doesn't exist
-      return []
-    }
-
     // prepare output
     const transactions: InnerTransaction[] = []
     const signers: PublicAccount[] = []
 
+    // :warning: Transactions from `TransferOwnership` command are
+    // :warning: prepended to the following transactions.
+    // :warning: @see TransferOwnership.transactions
+
     // Transaction 01: Add execution proof transaction
     transactions.push(TransferTransaction.create(
       this.context.parameters.deadline,
-      the_partition.account.address,
+      partition.address,
       [],
-      PlainMessage.create(this.descriptor),
+      PlainMessage.create(this.dataDescriptor),
       this.context.network.networkType,
       undefined,
     ))
@@ -113,46 +115,23 @@ export class UnlockBalance extends AbstractCommand {
     // Transaction 01 is issued by **target** account
     signers.push(this.target)
 
-    // Transaction 02: First send back the amount to the target account
+    // Transaction 02: Add data to partition account
     transactions.push(TransferTransaction.create(
       this.context.parameters.deadline,
-      this.target.address, // back to target account (non-transferrable)
-      [
-        new Mosaic(
-          this.identifier.toMosaicId(),
-          UInt64.fromUint(amount),
-        )
-      ],
-      PlainMessage.create(this.descriptor),
+      partition.address,
+      [],
+      PlainMessage.create(plainData),
       this.context.network.networkType,
       undefined,
     ))
 
-    // Transaction 02 is issued by **locker** account
-    signers.push(locker)
-
-    // Transaction 03: Transfer to partition account
-    transactions.push(TransferTransaction.create(
-      this.context.parameters.deadline,
-      partition.address, // mosaics will be owned by partition account
-      [
-        new Mosaic(
-          this.identifier.toMosaicId(),
-          UInt64.fromUint(amount),
-        )
-      ],
-      PlainMessage.create(this.transferDescriptor + ':' + the_partition.name), // use partition name
-      this.context.network.networkType,
-      undefined,
-    ))
-
-    // Transaction 03 is issued by **target** account
-    signers.push(this.target)
+    // Transaction 02 is signer by **partition** account
+    signers.push(partition)
 
     // return transactions issued by assigned signer
-    return transactions.map(
+    return parentTransactions.concat(transactions.map(
       (transaction, i) => transaction.toAggregate(signers[i])
-    )
+    ))
   }
   // end-region abstract methods
 }

@@ -232,13 +232,13 @@ export class TransactionService {
     lastTransactionId?: string,
   ): Observable<TransferTransaction[]> {
     return this.getUnprocessedTransactions(exchangeAddress, lastTransactionId).pipe(
-      mergeMap((transactions) =>
+      mergeMap((transactions: Transaction[]) =>
         this.resolveTransactionsAliases(transactions)),
-      map((transactions) =>
+      map((transactions: Transaction[]) =>
         TransactionService.flattenAggregateTransactions(transactions)),
-      mergeMap((transactions) =>
+      mergeMap((transactions: Transaction[]) =>
         this.filterTransactionsWithEnoughConfirmations(transactions, requiredConfirmations)),
-      map((transactions) =>
+      map((transactions: Transaction[]) =>
         TransactionService.filterElligibleTransfers(transactions, exchangeAddress, tokenId)),
     )
   }
@@ -260,13 +260,13 @@ export class TransactionService {
     lastTransactionId?: string,
   ): Observable<TransferTransaction[]> {
     return this.getUnprocessedTransactions(exchangeAddress, lastTransactionId).pipe(
-      mergeMap((transactions) =>
+      mergeMap((transactions: Transaction[]) =>
         this.resolveTransactionsAliases(transactions)),
-      map((transactions) =>
+      map((transactions: Transaction[]) =>
         TransactionService.flattenAggregateTransactions(transactions)),
-      mergeMap((transactions) =>
+      mergeMap((transactions: Transaction[]) =>
         this.filterTransactionsWithEnoughConfirmations(transactions, requiredConfirmations)),
-      map((transactions) =>
+      map((transactions: Transaction[]) =>
         TransactionService.filterElligibleDeposits(transactions, exchangeAddress, tokenId)),
     )
   }
@@ -288,13 +288,13 @@ export class TransactionService {
     lastTransactionId?: string,
   ): Observable<TransferTransaction[]> {
     return this.getUnprocessedTransactions(exchangeAddress, lastTransactionId).pipe(
-      mergeMap((transactions) =>
+      mergeMap((transactions: Transaction[]) =>
         this.resolveTransactionsAliases(transactions)),
-      map((transactions) =>
+      map((transactions: Transaction[]) =>
         TransactionService.flattenAggregateTransactions(transactions)),
-      mergeMap((transactions) =>
+      mergeMap((transactions: Transaction[]) =>
         this.filterTransactionsWithEnoughConfirmations(transactions, requiredConfirmations)),
-      map((transactions) =>
+      map((transactions: Transaction[]) =>
         TransactionService.filterElligibleWithdrawals(transactions, exchangeAddress, tokenId)),
     )
   }
@@ -321,7 +321,7 @@ export class TransactionService {
     return this.accountRepository
       .getAccountTransactions(exchangeAddress, queryParams, transactionFilter).pipe(
         // Get all transactions pending to be processed
-        expand((transactions) => {
+        expand((transactions: Transaction[]) => {
           if (transactions.length === this.pageSize) {
             return this.accountRepository.getAccountTransactions(
               exchangeAddress,
@@ -351,7 +351,7 @@ export class TransactionService {
   ): Observable<Transaction[]> {
     return this.chainRepository.getBlockchainHeight().pipe(
       // Determine if the transactions have received enough confirmations.
-      map((currentHeight) => transactions.filter((transaction) => {
+      map((currentHeight: UInt64) => transactions.filter((transaction) => {
         const transactionHeight = transaction.transactionInfo!.height;
         return (currentHeight.subtract(transactionHeight)
           .compare(UInt64.fromUint(requiredConfirmations)) >= 0);

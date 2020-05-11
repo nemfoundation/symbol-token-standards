@@ -36,6 +36,7 @@ import { MultisigService } from '../services/MultisigService'
 import { PartitionService } from '../services/PartitionService'
 import { FailureEmptyContract } from '../errors/FailureEmptyContract'
 import { TransactionParameters } from '../../../models/TransactionParameters'
+import { SecuritiesMetadata } from '../models/SecuritiesMetadata'
 
 /**
  * @class NIP13.AbstractCommand
@@ -63,6 +64,11 @@ export abstract class AbstractCommand extends BaseCommand {
    * @description Partition records of said token.
    */
   public partitions: TokenPartition[] = []
+
+  /**
+   * @description The securities metadata
+   */
+  public metadata: SecuritiesMetadata | undefined
 
   /**
    * @description List of **required** arguments for this token command.

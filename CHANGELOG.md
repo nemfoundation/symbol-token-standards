@@ -3,6 +3,27 @@ All notable changes to this project will be documented in this file.
 
 The changelog format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [v0.5.1][v0.5.1]
+
+- (NIP13) Added draft implementation for NIP13 token command `AttachDocument`
+- (NIP13) Added draft implementation for NIP13 token command `BatchTransferOwnership`
+- (NIP13) Added draft implementation for NIP13 token command `BatchTransferOwnershipWithData`
+- (NIP13) Added draft implementation for NIP13 token command `DelegateIssuerPower`
+- (NIP13) Added draft implementation for NIP13 token command `ForcedTransfer`
+- (NIP13) Added draft implementation for NIP13 token command `LockBalance`
+- (NIP13) Added draft implementation for NIP13 token command `ModifyMetadata`
+- (NIP13) Added draft implementation for NIP13 token command `ModifyRestriction`
+- (NIP13) Added draft implementation for NIP13 token command `RevokeIssuerPower`
+- (NIP13) Added draft implementation for NIP13 token command `TransferOwnershipWithData`
+- (NIP13) Added draft implementation for NIP13 token command `UnlockBalance`
+
+## [v0.5.0][v0.5.0]
+
+- (NIP13) Decoupled helpers/Derivation from library level to include in NIP13/services
+- (NIP13) Removed _namespaces_ in built library in favor for exported modules
+- (NIP13) Added TokenAuthority draft for allowing multiple token registrars
+- (NIP13) Added 'authority' public account argument to NIP13 CreateToken command
+
 ## [v0.4.2][v0.4.2]
 
 - (NIP13) Changed Command interface to remove synchronize and move inside Standard interface

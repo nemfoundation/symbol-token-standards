@@ -30,10 +30,12 @@ import { AbstractCommand } from './AbstractCommand'
 /**
  * @class NIP13.ForcedTransfer
  * @package NIP13 Token Commands
- * @since v0.1.0
+ * @since v0.5.0
  * @description Class that describes a token command for force-transferring NIP13 compliant tokens.
  * @summary This token command prepares one aggregate bonded transaction with following inner transactions:
  *
+ *   - Transaction 0.01: Execution proof transaction
+ * 
  * 1) In case of sending back the amount to the target account
  *   - Transaction 1.01: Send back the amount to the target account
  *
@@ -67,6 +69,15 @@ export class ForcedTransfer extends AbstractCommand {
    * @return {string}
    **/
   public get descriptor(): string {
+    return 'NIP13(v' + this.context.revision + ')' + ':force-transfer:' + this.identifier.id
+  }
+
+  /**
+   * Getter for the command descriptor.
+   *
+   * @return {string}
+   **/
+  public get transferDescriptor(): string {
     return 'NIP13(v' + this.context.revision + ')' + ':transfer:' + this.identifier.id
   }
 
@@ -102,6 +113,19 @@ export class ForcedTransfer extends AbstractCommand {
     // prepare output
     const transactions: InnerTransaction[] = []
     const signers: PublicAccount[] = []
+
+    // Transaction 0.01: Add execution proof transaction
+    transactions.push(TransferTransaction.create(
+      this.context.parameters.deadline,
+      sender_partition.account.address,
+      [],
+      PlainMessage.create(this.descriptor),
+      this.context.network.networkType,
+      undefined,
+    ))
+
+    // Transaction 0.01 is issued by **target** account
+    signers.push(this.target)
 
     // 1) sending back the amount to the target account
     if (recipient.address.equals(this.target.address)) {
@@ -158,7 +182,8 @@ export class ForcedTransfer extends AbstractCommand {
             UInt64.fromUint(amount),
           )
         ],
-        PlainMessage.create(this.descriptor + ':' + recipient_partition.name), // use recipient partition name
+        // use recipient partition name
+        PlainMessage.create(this.transferDescriptor + ':' + recipient_partition.name),
         this.context.network.networkType,
         undefined,
       ))

@@ -77,4 +77,27 @@ export class Context {
     const it = this.argv.find(opt => opt.name === name)
     return it ? it.value as ValueType : defaultValue
   }
+
+  /**
+   * Set the value of an input by its' `name` in `argv` options.
+   *
+   * @param   {string}      name
+   * @param   {ValueType}   value
+   * @return  {Context}
+   */
+  public setInput<ValueType>(
+    name: string,
+    value: ValueType,
+  ): Context {
+    if (undefined === this.argv) {
+      this.argv = []
+    }
+
+    this.argv.push(new CommandOption(
+      name,
+      value,
+    ))
+
+    return this
+  }
 }

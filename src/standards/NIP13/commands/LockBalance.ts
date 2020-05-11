@@ -36,16 +36,17 @@ import { AbstractCommand } from './AbstractCommand'
 /**
  * @class NIP13.LockBalance
  * @package NIP13 Token Commands
- * @since v0.1.0
+ * @since v0.5.0
  * @description Class that describes a token command for locking (part of) balances of NIP13 compliant tokens.
  * @summary This token command prepares one aggregate bonded transaction with following inner transactions:
  *
- *  - Transaction 01: MultisigAccountModificationTransaction
- *  - Transaction 02: AccountMetadataTransaction attaching `Is_Lock`
- *  - Transaction 03: AccountMosaicRestrictionTransaction for mosaicId & fee
- *  - Transaction 04: MosaicAddressRestriction with `User_Role = Locker` for locker
- *  - Transaction 05: First send back the amount to the target account
- *  - Transaction 06: Add ownership transfer transaction to locker account
+ *  - Transaction 01: Add execution proof transaction
+ *  - Transaction 02: MultisigAccountModificationTransaction
+ *  - Transaction 03: AccountMetadataTransaction attaching `Is_Lock`
+ *  - Transaction 04: AccountMosaicRestrictionTransaction for mosaicId & fee
+ *  - Transaction 05: MosaicAddressRestriction with `User_Role = Locker` for locker
+ *  - Transaction 06: First send back the amount to the target account
+ *  - Transaction 07: Add ownership transfer transaction to locker account
  */
 export class LockBalance extends AbstractCommand {
   /**
@@ -102,17 +103,30 @@ export class LockBalance extends AbstractCommand {
     const transactions: InnerTransaction[] = []
     const signers: PublicAccount[] = []
 
-    // Transaction 01: MultisigAccountModificationTransaction
-    // Transaction 02: AccountMetadataTransaction attaching `Is_Lock`
-    // Transaction 03: AccountMosaicRestrictionTransaction for mosaicId & fee
-    // Transaction 04: MosaicAddressRestriction with `User_Role = Locker` for locker
+    // Transaction 01: Add execution proof transaction
+    transactions.push(TransferTransaction.create(
+      this.context.parameters.deadline,
+      the_partition.account.address,
+      [],
+      PlainMessage.create(this.descriptor),
+      this.context.network.networkType,
+      undefined,
+    ))
+
+    // Transaction 01 is issued by **target** account
+    signers.push(this.target)
+
+    // Transaction 02: MultisigAccountModificationTransaction
+    // Transaction 03: AccountMetadataTransaction attaching `Is_Lock`
+    // Transaction 04: AccountMosaicRestrictionTransaction for mosaicId & fee
+    // Transaction 05: MosaicAddressRestriction with `User_Role = Locker` for locker
     const payload = this.createBalanceLock(partition, locker)
     payload.transactions.map((t, i) => {
       transactions.push(t)
       signers.push(payload.signers[i])
     })
 
-    // Transaction 05: First send back the amount to the target account
+    // Transaction 06: First send back the amount to the target account
     transactions.push(TransferTransaction.create(
       this.context.parameters.deadline,
       this.target.address, // back to target account (non-transferrable)
@@ -127,10 +141,10 @@ export class LockBalance extends AbstractCommand {
       undefined,
     ))
 
-    // Transaction 05 is issued by **partition** account
+    // Transaction 06 is issued by **partition** account
     signers.push(partition)
 
-    // Transaction 06: Transfer to locker account
+    // Transaction 07: Transfer to locker account
     transactions.push(TransferTransaction.create(
       this.context.parameters.deadline,
       locker.address, // mosaics will be owned by new locker account
@@ -145,7 +159,7 @@ export class LockBalance extends AbstractCommand {
       undefined,
     ))
 
-    // Transaction 06 is issued by **target** account
+    // Transaction 07 is issued by **target** account
     signers.push(this.target)
 
     // return transactions issued by assigned signer
@@ -170,11 +184,11 @@ export class LockBalance extends AbstractCommand {
     const signers: PublicAccount[] = []
 
     // Transaction 01: MultisigAccountModificationTransaction
-    // :warning: Only operators are allowed to manage lockers
+    // :warning: Only operators are allowed to manage lockers (through target account setup)
     transactions.push(MultisigAccountModificationTransaction.create(
       this.context.parameters.deadline,
-      this.operators.length, // all operators for minApproval
-      this.operators.length - 1, // all except one for minRemoval
+      1, // target account manages
+      1, // target account manages
       [this.target], // **target** account is made cosignatory (multi-level)
       [],
       this.context.network.networkType,

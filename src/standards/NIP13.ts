@@ -20,7 +20,6 @@ import {
   SHA3Hasher,
   MosaicInfo,
   MosaicId,
-  Address,
 } from 'symbol-sdk'
 import {
   MnemonicPassPhrase,
@@ -45,9 +44,11 @@ import {
   TransactionParameters,
 } from '../../index'
 import { SecuritiesMetadata } from './NIP13/models/SecuritiesMetadata'
+import { SecuritiesRestrictions } from './NIP13/models/SecuritiesRestrictions'
 import { Accountable } from './NIP13/contracts/Accountable'
 import { MultisigService } from './NIP13/services/MultisigService'
 import { MetadataService } from './NIP13/services/MetadataService'
+import { RestrictionService } from './NIP13/services/RestrictionService'
 import { PartitionService } from './NIP13/services/PartitionService'
 import { MosaicService } from './NIP13/services/MosaicService'
 import { AbstractCommand } from './NIP13/commands/AbstractCommand'
@@ -215,6 +216,11 @@ export class TokenStandard extends Accountable implements Standard {
   public metadata: SecuritiesMetadata | undefined
 
   /**
+   * @description The securities metadata
+   */
+  public restrictions: SecuritiesRestrictions | undefined
+
+  /**
    * @description Last token command execution result. URIs must be executed
    *              outside of the token standard.
    */
@@ -253,7 +259,7 @@ export class TokenStandard extends Accountable implements Standard {
    * @return {TokenIdentifier}
    */
   public get identifier(): TokenIdentifier {
-    // prepare deterministic token identifier
+    // prepare deterministic token identifier (sha3-512)
     const hash = new Uint8Array(64)
     const data = this.target.address.plain() + '-' + this.source.source
     SHA3Hasher.func(hash, Convert.utf8ToUint8(data), 64)
@@ -280,6 +286,7 @@ export class TokenStandard extends Accountable implements Standard {
     const context = this.getContext(this.target, new TransactionParameters())
     const multisig = new MultisigService(context)
     const metadata = new MetadataService(context)
+    const restrictions = new RestrictionService(context)
     const partitions = new PartitionService(context)
 
     // initialize REST
@@ -305,6 +312,9 @@ export class TokenStandard extends Accountable implements Standard {
 
     // read token metadata
     this.metadata = await metadata.getMetadataFromNetwork(this.identifier)
+
+    // read token restrictions
+    this.restrictions = await restrictions.getRestrictionsFromNetwork(this.identifier)
 
     // success exit
     return true
@@ -477,6 +487,7 @@ export class TokenStandard extends Accountable implements Standard {
       cmdFn.mosaicInfo = this.mosaicInfo
       cmdFn.operators = this.operators
       cmdFn.partitions = this.partitions
+      cmdFn.metadata = this.metadata
 
       // execute token command
       return cmdFn.execute(actor, argv)

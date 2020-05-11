@@ -21,29 +21,31 @@ import {
   PlainMessage,
   Mosaic,
   UInt64,
+  SHA3Hasher,
+  Convert,
 } from 'symbol-sdk'
 
 // internal dependencies
 import { AbstractCommand } from './AbstractCommand'
 
 /**
- * @class NIP13.UnlockBalance
+ * @class NIP13.AttachDocument
  * @package NIP13 Token Commands
  * @since v0.5.0
- * @description Class that describes a token command for unlocking (part of) balances of NIP13 compliant tokens.
+ * @description Class that describes a token command for attaching document to NIP13 compliant tokens.
  * @summary This token command prepares one aggregate bonded transaction with following inner transactions:
  *
- *  - Transaction 01: First send back the amount to the target account
- *  - Transaction 02: Add ownership transfer transaction to partition
+ *  - Transaction 01: Execution proof transaction
+ *  - Transaction 02: Attach document hash to be signed by target account
  */
-export class UnlockBalance extends AbstractCommand {
+export class AttachDocument extends AbstractCommand {
   /**
    * @description List of **required** arguments for this token command.
    */
   public arguments: string[] = [
-    'partition',
-    'locker',
-    'amount',
+    'algorithm', // one of 'SHA3-256', 'SHA3-512'
+    'document', // binary data
+    'filename',
   ]
 
   // region abstract methods
@@ -52,7 +54,7 @@ export class UnlockBalance extends AbstractCommand {
    * @see {BaseCommand.name}
    **/
   public get name(): string {
-    return 'UnlockBalance'
+    return 'AttachDocument'
   }
 
   /**
@@ -61,40 +63,35 @@ export class UnlockBalance extends AbstractCommand {
    * @return {string}
    **/
   public get descriptor(): string {
-    return 'NIP13(v' + this.context.revision + ')' + ':unlock:' + this.identifier.id
-  }
-
-  /**
-   * Getter for the command descriptor.
-   *
-   * @return {string}
-   **/
-  public get transferDescriptor(): string {
-    return 'NIP13(v' + this.context.revision + ')' + ':transfer:' + this.identifier.id
+    return 'NIP13(v' + this.context.revision + ')' + ':document:' + this.identifier.id
   }
 
   /**
    * @description Builds the inner transactions necessary for the
-   *              execution of a `UnlockBalance` command.
+   *              execution of a `AttachDocument` command.
    * @see {AbstractCommand.transactions}
    * @return {Transaction[]} Aggregate bonded transaction
    **/
   protected get transactions(): Transaction[] {
     // read external arguments
-    const partition = this.context.getInput('partition', new PublicAccount())
-    const locker = this.context.getInput('locker', new PublicAccount())
-    const amount = this.context.getInput('amount', 0)
+    const algorithm = this.context.getInput('algorithm', 'SHA3-256')
+    const document = this.context.getInput('document', '')
+    const filename = this.context.getInput('locker', new PublicAccount())
 
-    // find partition
-    const the_partition = this.partitions.find(
-      p => p.account.address.equals(partition.address)
-    )
-
-    // 'UnlockBalance' is only possible for existing partitions
-    if (undefined === the_partition) {
-      // the partition doesn't exist
-      return []
+    // determine hash size by algorithm
+    let hashSize: number = 32
+    switch (algorithm.toUpperCase()) {
+      default:
+      case 'SHA3-256': hashSize = 32; break;
+      case 'SHA3-512': hashSize = 64; break;
     }
+
+    // generate deterministic document hash
+    const hash = new Uint8Array(64)
+    SHA3Hasher.func(hash, Convert.utf8ToUint8(document), 64)
+
+    // convert to hexadecimal
+    const documentHash = Convert.uint8ToHex(hash)
 
     // prepare output
     const transactions: InnerTransaction[] = []
@@ -103,7 +100,7 @@ export class UnlockBalance extends AbstractCommand {
     // Transaction 01: Add execution proof transaction
     transactions.push(TransferTransaction.create(
       this.context.parameters.deadline,
-      the_partition.account.address,
+      this.target.address,
       [],
       PlainMessage.create(this.descriptor),
       this.context.network.networkType,
@@ -113,40 +110,17 @@ export class UnlockBalance extends AbstractCommand {
     // Transaction 01 is issued by **target** account
     signers.push(this.target)
 
-    // Transaction 02: First send back the amount to the target account
+    // Transaction 02: Attach document hash to be signed by target account
     transactions.push(TransferTransaction.create(
       this.context.parameters.deadline,
-      this.target.address, // back to target account (non-transferrable)
-      [
-        new Mosaic(
-          this.identifier.toMosaicId(),
-          UInt64.fromUint(amount),
-        )
-      ],
-      PlainMessage.create(this.descriptor),
+      this.target.address,
+      [],
+      PlainMessage.create(filename + ':' + documentHash),
       this.context.network.networkType,
       undefined,
     ))
 
-    // Transaction 02 is issued by **locker** account
-    signers.push(locker)
-
-    // Transaction 03: Transfer to partition account
-    transactions.push(TransferTransaction.create(
-      this.context.parameters.deadline,
-      partition.address, // mosaics will be owned by partition account
-      [
-        new Mosaic(
-          this.identifier.toMosaicId(),
-          UInt64.fromUint(amount),
-        )
-      ],
-      PlainMessage.create(this.transferDescriptor + ':' + the_partition.name), // use partition name
-      this.context.network.networkType,
-      undefined,
-    ))
-
-    // Transaction 03 is issued by **target** account
+    // Transaction 02 is issued by **target** account
     signers.push(this.target)
 
     // return transactions issued by assigned signer

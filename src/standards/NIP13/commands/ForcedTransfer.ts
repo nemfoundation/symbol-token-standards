@@ -32,16 +32,14 @@ import { AbstractCommand } from './AbstractCommand'
  * @package NIP13 Token Commands
  * @since v0.5.0
  * @description Class that describes a token command for force-transferring NIP13 compliant tokens.
- * @summary This token command prepares one aggregate bonded transaction with following inner transactions:
+ * @summary
+ * This token command accepts the following arguments:
  *
- *   - Transaction 0.01: Execution proof transaction
- * 
- * 1) In case of sending back the amount to the target account
- *   - Transaction 1.01: Send back the amount to the target account
- *
- * 2) In case of sending the amount to another partition
- *   - Transaction 2.01: First send back the amount to the target account
- *   - Transaction 2.02: Add ownership transfer transaction
+ * | Argument | Description | Example |
+ * | --- | --- | --- |
+ * | sender | Sender token holder partition account | `new PublicAccount(...)` |
+ * | recipient | Recipient token holder partition account | `new PublicAccount(...)` |
+ * | amount | Number of shares to be transferred | `1` |
  */
 export class ForcedTransfer extends AbstractCommand {
   /**
@@ -49,8 +47,7 @@ export class ForcedTransfer extends AbstractCommand {
    */
   public arguments: string[] = [
     'sender',
-    'partition',
-    'recipient',
+    'recipient', // must be a PARTITION ACCOUNT
     'amount',
   ]
 
@@ -69,7 +66,7 @@ export class ForcedTransfer extends AbstractCommand {
    * @return {string}
    **/
   public get descriptor(): string {
-    return 'NIP13(v' + this.context.revision + ')' + ':force-transfer:' + this.identifier.id
+    return 'NIP13(v' + this.context.revision + ')' + ':forced-transfer:' + this.identifier.id
   }
 
   /**
@@ -90,7 +87,6 @@ export class ForcedTransfer extends AbstractCommand {
   protected get transactions(): Transaction[] {
     // read external arguments
     const sender = this.context.getInput('sender', new PublicAccount())
-    const partition = this.context.getInput('partition', new PublicAccount())
     const recipient = this.context.getInput('recipient', new PublicAccount())
     const amount = this.context.getInput('amount', 0)
 
@@ -101,7 +97,7 @@ export class ForcedTransfer extends AbstractCommand {
 
     // find recipient partition
     const recipient_partition = this.partitions.find(
-      p => p.account.address.equals(partition.address)
+      p => p.account.address.equals(recipient.address)
     )
 
     // 'ForcedTransfer' is only possible between partitions or back to target
@@ -147,10 +143,10 @@ export class ForcedTransfer extends AbstractCommand {
       // Transaction 1.01 is issued by **sender** account
       signers.push(sender)
     }
-    // 2) sending the amount to a partition
+    // 2) force-sending the amount to a partition
     else {
       if (undefined === recipient_partition) {
-        // recipient partition doesn't exist
+        // Error: recipient partition doesn't exist
         return []
       }
 

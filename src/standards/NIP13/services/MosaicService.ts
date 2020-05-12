@@ -57,7 +57,7 @@ export class MosaicService extends Service {
     )
 
     // Step 1) read transfers to find partition accounts
-    const transactions: TransferTransaction[] = await service.getTransfers(
+    const transactions: TransferTransaction[] = await service.getIncomingTransfers(
       authority.address,
       undefined,
       0, // no more than 1 block confirmation required

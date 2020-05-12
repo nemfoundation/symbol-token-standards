@@ -19,15 +19,6 @@ import {
   PublicAccount,
   TransferTransaction,
   PlainMessage,
-  Mosaic,
-  UInt64,
-  MultisigAccountModificationTransaction,
-  AccountMosaicRestrictionTransaction,
-  AccountRestrictionFlags,
-  MosaicAddressRestrictionTransaction,
-  KeyGenerator,
-  AccountMetadataTransaction,
-  EmptyMessage,
 } from 'symbol-sdk'
 
 // internal dependencies
@@ -38,22 +29,25 @@ import { TransferOwnershipWithData } from './TransferOwnershipWithData'
  * @package NIP13 Token Commands
  * @since v0.1.0
  * @description Class that describes a token command for batch transferring NIP13 compliant tokens and attaching data.
- * @summary This token command prepares one aggregate bonded transaction with following inner transactions:
+ * @summary
+ * This token command accepts the following arguments:
  *
- *  - Transaction 01: Execution proof transaction *
- * @see TransferOwnership Transactions of the parent class are appended to this command's transactions.
+ * | Argument | Description | Example |
+ * | --- | --- | --- |
+ * | sender | Sender token holder partition account | `new PublicAccount(...)` |
+ * | recipients | Recipient token holder partition accounts | `[new PublicAccount(...)]` |
+ * | amount | Number of shares to be transferred | `1` |
+ * | data | Plain text or encrypted data to attach | `Hello, world!` |
  */
 export class BatchTransferOwnershipWithData extends TransferOwnershipWithData {
   /**
    * @description List of **required** arguments for this token command.
    */
   public arguments: string[] = [
-      'name',
-      'sender',
-      'partitions', // plural
-      'recipients', // plural
-      'amount',
-      'data',
+    'sender',
+    'recipients', // plural
+    'amount',
+    'data',
   ]
 
   // region abstract methods
@@ -82,7 +76,6 @@ export class BatchTransferOwnershipWithData extends TransferOwnershipWithData {
    **/
   protected get transactions(): Transaction[] {
     // read external arguments
-    const partitions = this.context.getInput('partitions', [])
     const recipients = this.context.getInput('recipients', [])
 
     // prepare output
@@ -102,17 +95,16 @@ export class BatchTransferOwnershipWithData extends TransferOwnershipWithData {
     // Transaction 01 is issued by **target** account
     signers.push(this.target)
 
-    // :warning: Each partition listed in `partitions`
+    // :warning: Each partition listed in `recipients`
     // :warning: will produce the execution on one `TransferOwnershipWithData`
     let parentTransactions: InnerTransaction[] = []
-    for (let i = 0, m = partitions.length; i < m; i++) {
-      const the_partition: PublicAccount = partitions[i]
-      const the_recipient: PublicAccount = recipients[i]
+    for (let i = 0, m = recipients.length; i < m; i++) {
+      const the_partition: PublicAccount = recipients[i]
 
-      // set `TransferOwnership` command arguments
-      this.context.setInput('partition', the_partition)
-      this.context.setInput('recipient', the_recipient)
+      // set `TransferOwnershipWithData` command arguments
+      this.context.setInput('recipient', the_partition)
 
+      // @see TransferOwnershipWithData.transactions()
       parentTransactions = parentTransactions.concat(super.transactions)
     }
 

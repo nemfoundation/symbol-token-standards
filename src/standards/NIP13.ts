@@ -83,6 +83,15 @@ type CommandsList = {
 export class TokenMetadata extends SecuritiesMetadata {}
 
 /**
+ * @type NIP13.TokenRestrictions
+ * @package standards
+ * @since v0.5.1
+ * @description Class that describes NIP13 token restrictions
+ * @see {SecuritiesRestrictions}
+ */
+export class TokenRestrictions extends SecuritiesRestrictions {}
+
+/**
  * @type NIP13.TokenAuthority
  * @package standards
  * @since v0.3.3
@@ -165,7 +174,19 @@ export class TokenAuthority extends Accountable {
  */
 export const TokenCommands: CommandsList = {
   'CreateToken': (c, i, k): Command => new CommandsImpl.CreateToken(c, i, k),
+  'CreatePartition': (c, i, k): Command => new CommandsImpl.CreatePartition(c, i, k),
   'TransferOwnership': (c, i, k): Command => new CommandsImpl.TransferOwnership(c, i, k),
+  'TransferOwnershipWithData': (c, i, k): Command => new CommandsImpl.TransferOwnershipWithData(c, i, k),
+  'BatchTransferOwnership': (c, i, k): Command => new CommandsImpl.BatchTransferOwnership(c, i, k),
+  'BatchTransferOwnershipWithData': (c, i, k): Command => new CommandsImpl.BatchTransferOwnershipWithData(c, i, k),
+  'ForcedTransfer': (c, i, k): Command => new CommandsImpl.ForcedTransfer(c, i, k),
+  'LockBalance': (c, i, k): Command => new CommandsImpl.LockBalance(c, i, k),
+  'UnlockBalance': (c, i, k): Command => new CommandsImpl.UnlockBalance(c, i, k),
+  'ModifyMetadata': (c, i, k): Command => new CommandsImpl.ModifyMetadata(c, i, k),
+  'ModifyRestriction': (c, i, k): Command => new CommandsImpl.ModifyRestriction(c, i, k),
+  'DelegateIssuerPower': (c, i, k): Command => new CommandsImpl.DelegateIssuerPower(c, i, k),
+  'RevokeIssuerPower': (c, i, k): Command => new CommandsImpl.RevokeIssuerPower(c, i, k),
+  'AttachDocument': (c, i, k): Command => new CommandsImpl.AttachDocument(c, i, k),
 }
 
 /**
@@ -307,7 +328,7 @@ export class TokenStandard extends Accountable implements Standard {
       this.identifier,
       this.target,
       this.operators,
-      'NIP13(v' + context.revision + '):transfer:' + this.identifier.id + ':' // label after this
+      'NIP13(v' + context.revision + '):partition:' + this.identifier.id + ':' // label after this
     )
 
     // read token metadata
@@ -325,28 +346,27 @@ export class TokenStandard extends Accountable implements Standard {
    *
    * @param   {string}                  name
    * @param   {PublicAccount}           actor
-   * @param   {PublicAccount} authority
-   * @param   {PublicAccount}           target
+   * @param   {PublicAccount}           authority
    * @param   {Array<PublicAccount>}    operators
    * @param   {number}                  supply
+   * @param   {SecuritiesMetadata}      metadata
    * @param   {TransactionParameters}   parameters
    * @return  {TokenIdentifier}
    **/
   public create(
-    authority: PublicAccount,
     name: string,
     actor: PublicAccount,
+    authority: PublicAccount,
     operators: PublicAccount[],
     supply: number,
     metadata: SecuritiesMetadata,
     parameters: TransactionParameters,
   ): TokenIdentifier {
-
     // generate deterministic token identifier
     const tokenId = this.identifier
 
-    // execute token command `CreateToken`
-    this.result = this.execute(actor, tokenId, 'CreateToken', parameters, [
+    // execute token command `CreateToken` (synchronize() not needed)
+    this.result = this.executeWithoutSync(actor, tokenId, 'CreateToken', parameters, [
       new CommandOption('name', name),
       new CommandOption('source', this.source),
       new CommandOption('authority', authority),
@@ -359,41 +379,94 @@ export class TokenStandard extends Accountable implements Standard {
   }
 
   /**
-   * Transfer shared of a previously created Security Token with identifier `tokenId`.
+   * Add a token holder partition for \a holder with deterministic
+   * \a partition account.
+   *
+   * @param {PublicAccount} actor 
+   * @param partition 
+   * @param holder 
+   */
+  public async addPartition(
+    actor: PublicAccount,
+    partition: PublicAccount,
+    holder: PublicAccount,
+    name: string,
+    parameters: TransactionParameters,
+  ): Promise<TransactionURI> {
+    // generate deterministic token identifier
+    const tokenId = this.identifier
+
+    // execute token command `CreatePartition`
+    this.result = await this.execute(actor, tokenId, 'CreatePartition', parameters, [
+      new CommandOption('name', name),
+      new CommandOption('partition', partition),
+      new CommandOption('holder', holder),
+    ])
+
+    return this.result
+  }
+
+  /**
+   * Transfer shares of a Security Token with identifier `tokenId`.
    *
    * @internal This method MUST use the `TransferOwnership` command.
    * @param   {PublicAccount}         actor
-   * @param   {PublicAccount}         partition
    * @param   {PublicAccount}         sender
-   * @param   {PublicAccount}         recipient
-   * @param   {string}                label
+   * @param   {PublicAccount}         recipient   MUST be a partition account
    * @param   {number}                amount
    * @param   {TransactionParameters} parameters
    * @return  {TransactionURI}
    **/
   public async transfer(
     actor: PublicAccount,
-    partition: PublicAccount,
     sender: PublicAccount,
     recipient: PublicAccount,
-    label: string,
     amount: number,
     parameters: TransactionParameters,
   ): Promise<TransactionURI> {
-
-    // read state from REST API
-    await this.synchronize()
-
     // generate deterministic token identifier
     const tokenId = this.identifier
 
     // execute token command `TransferOwnership`
-    this.result = this.execute(actor, tokenId, 'TransferOwnership', parameters, [
-      new CommandOption('name', label),
+    this.result = await this.execute(actor, tokenId, 'TransferOwnership', parameters, [
       new CommandOption('sender', sender),
-      new CommandOption('partition', partition),
       new CommandOption('recipient', recipient),
       new CommandOption('amount', amount),
+    ])
+
+    return this.result
+  }
+
+  /**
+   * Transfer shares of a Security Token with identifier `tokenId` and attach 
+   * plain text-, signed-, encrypted- data.
+   *
+   * @internal This method MUST use the `TransferOwnershipWithData` command.
+   * @param   {PublicAccount}         actor
+   * @param   {PublicAccount}         sender
+   * @param   {PublicAccount}         recipient   MUST be a partition account
+   * @param   {number}                amount
+   * @param   {string}                data
+   * @param   {TransactionParameters} parameters
+   * @return  {TransactionURI}
+   **/
+  public async transferWithData(
+    actor: PublicAccount,
+    sender: PublicAccount,
+    recipient: PublicAccount,
+    amount: number,
+    data: string,
+    parameters: TransactionParameters,
+  ): Promise<TransactionURI> {
+    // generate deterministic token identifier
+    const tokenId = this.identifier
+
+    // execute token command `TransferOwnership`
+    this.result = await this.execute(actor, tokenId, 'TransferOwnershipWithData', parameters, [
+      new CommandOption('sender', sender),
+      new CommandOption('recipient', recipient),
+      new CommandOption('amount', amount),
+      new CommandOption('data', data),
     ])
 
     return this.result
@@ -403,7 +476,7 @@ export class TokenStandard extends Accountable implements Standard {
    * Notify an account `account` about `notification`
    *
    * @param   {TokenIdentifier} tokenId
-   * @param   {PublicAccount}         account
+   * @param   {PublicAccount}   account
    * @param   {Notification}    notification
    * @return  {NotificationProof}
    **/
@@ -417,17 +490,53 @@ export class TokenStandard extends Accountable implements Standard {
   }
 
   /**
-   * Verifies **allowance** of `sender` to transfer `tokenId` security token.
+   * Verifies **allowance** of `sender` to transfer `tokenId` security token
+   * to `recipient` with a number of shares attached of `amount`.
    *
-   * @param   {PublicAccount}         sender
    * @param   {TokenIdentifier} tokenId
+   * @param   {PublicAccount}   sender
+   * @param   {PublicAccount}   recipient
+   * @param   {number}          amount
    * @return  {AllowanceResult}
    **/
   public canTransfer(
+    tokenId: TokenIdentifier,
     sender: PublicAccount,
-    tokenId: TokenIdentifier
+    recipient: PublicAccount,
+    amount: number,
   ): AllowanceResult {
-    return new AllowanceResult(true)
+    return this.canExecute(sender, tokenId, 'TransferOwnership', [
+      new CommandOption('sender', sender),
+      new CommandOption('recipient', recipient),
+      new CommandOption('amount', amount),
+    ])
+  }
+
+  /**
+   * Verifies **allowance** of `sender` to transfer `tokenId` security token
+   * to `recipient` with a number of shares attached of `amount` and attaching
+   * `data` plain text-, signed- or encrypted- data.
+   *
+   * @param   {TokenIdentifier} tokenId
+   * @param   {PublicAccount}   sender
+   * @param   {PublicAccount}   recipient
+   * @param   {number}          amount
+   * @param   {string}          data
+   * @return  {AllowanceResult}
+   **/
+  public canTransferWithData(
+    tokenId: TokenIdentifier,
+    sender: PublicAccount,
+    recipient: PublicAccount,
+    amount: number,
+    data: string
+  ): AllowanceResult {
+    return this.canExecute(sender, tokenId, 'TransferOwnershipWithData', [
+      new CommandOption('sender', sender),
+      new CommandOption('recipient', recipient),
+      new CommandOption('amount', amount),
+      new CommandOption('data', data)
+    ])
   }
 
   /**
@@ -463,15 +572,63 @@ export class TokenStandard extends Accountable implements Standard {
   /**
    * Execute `command` for Security Token with identifier `tokenId`. Arguments
    * the command execution can be passed in `argv`.
+   * 
+   * This method MUST call the `synchronize()` method.
    *
    * @internal This method MUST use the `Command.execute()` method.
-   * @param   {PublicAccount}         actor  The execution `actor`
+   * @param   {PublicAccount}         actor
    * @param   {TokenIdentifier}       tokenId
    * @param   {string}                command
+   * @param   {TransactionParameters} parameters
+   * @param   {Array<CommandOption>}  argv
+   * @return  {Promise<TransactionURI>}
+   **/
+  public async execute(
+    actor: PublicAccount,
+    tokenId: TokenIdentifier,
+    command: string,
+    parameters: TransactionParameters,
+    argv: CommandOption[],
+  ): Promise<TransactionURI> {
+    // read state from REST API
+    await this.synchronize()
+
+    try {
+      // instanciate command and context
+      const context = this.getContext(actor, parameters, argv)
+      const cmdFn = this.getCommand(tokenId, command, context) as AbstractCommand
+
+      // populate async data
+      cmdFn.mosaicInfo = this.mosaicInfo
+      cmdFn.operators = this.operators
+      cmdFn.partitions = this.partitions
+      cmdFn.metadata = this.metadata
+      cmdFn.restrictions = this.restrictions
+
+      // execute token command
+      return cmdFn.execute(actor, argv)
+    }
+    catch (f) {
+      // XXX error notifications / events
+      throw f
+    }
+  }
+
+  /**
+   * Execute `command` for Security Token with identifier `tokenId`. Arguments
+   * the command execution can be passed in `argv`.
+   * 
+   * This method MUST NOT call the `synchronize()` method.
+   *
+   * @internal This method MUST use the `Command.execute()` method.
+   * @param   {PublicAccount}         actor
+   * @param   {TokenIdentifier}       tokenId
+   * @param   {string}                command
+   * @param   {TransactionParameters} parameters
    * @param   {Array<CommandOption>}  argv
    * @return  {TransactionURI}
    **/
-  public execute(
+  public executeWithoutSync(
     actor: PublicAccount,
     tokenId: TokenIdentifier,
     command: string,
@@ -488,6 +645,7 @@ export class TokenStandard extends Accountable implements Standard {
       cmdFn.operators = this.operators
       cmdFn.partitions = this.partitions
       cmdFn.metadata = this.metadata
+      cmdFn.restrictions = this.restrictions
 
       // execute token command
       return cmdFn.execute(actor, argv)
@@ -498,6 +656,7 @@ export class TokenStandard extends Accountable implements Standard {
     }
   }
 
+  /// region protected methods
   /**
    * Gets an execution context
    *
@@ -506,7 +665,7 @@ export class TokenStandard extends Accountable implements Standard {
    * @param   {CommandOption[]}         argv
    * @return  {Context}
    */
-  public getContext(
+  protected getContext(
     actor: PublicAccount,
     parameters: TransactionParameters,
     argv?: CommandOption[],
@@ -528,7 +687,7 @@ export class TokenStandard extends Accountable implements Standard {
    * @param {Context}         context 
    * @return {Command}
    */
-  public getCommand(
+  protected getCommand(
     tokenId: TokenIdentifier,
     command: string,
     context: Context,
@@ -540,6 +699,7 @@ export class TokenStandard extends Accountable implements Standard {
 
     return TokenCommands[command](context, tokenId, this.keyProvider)
   }
+  /// end-region protected methods
 }
 
 /**

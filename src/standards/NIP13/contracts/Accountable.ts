@@ -123,13 +123,16 @@ export class Accountable {
    * Derive a **partition** account
    *
    * @internal Partition account derivation paths use the ADDRESS path level.
-   * @param {PublicAccount}  owner
-   * @return {Account}
+   * @param   {PublicAccount}  owner
+   * @param   {number}         at
+   * @param   {string}         name
+   * @return  {Account}
    */
   public getPartition(
-    owner: PublicAccount
+    owner: PublicAccount,
+    name: string = 'default',
   ): Account {
-    const path = this.getPathForPartition(owner)
+    const path = this.getPathForPartition(owner, name)
     return this.getAccount(path)
   }
 
@@ -137,11 +140,13 @@ export class Accountable {
    * Get the BIP44 path for a partition owned by `owner`
    *
    * @internal Partition account derivation paths use the ADDRESS path level.
-   * @param {PublicAccount} owner 
-   * @return {string}
+   * @param   {PublicAccount} owner 
+   * @param   {number}         at
+   * @return  {string}
    */
   public getPathForPartition(
     owner: PublicAccount,
+    name: string = 'default',
   ): string {
     // prepare derivation
     const start = Derivation.PATH_NIP13
@@ -149,7 +154,7 @@ export class Accountable {
 
     // prepare deterministic
     const hash = new Uint8Array(64)
-    const data = owner.address.plain()
+    const data = name + '-' + owner.address.plain()
     SHA3Hasher.func(hash, Convert.utf8ToUint8(data), 64)
 
     // 3 right-most bytes for partition id

@@ -19,15 +19,7 @@ import {
   PublicAccount,
   TransferTransaction,
   PlainMessage,
-  Mosaic,
-  UInt64,
-  EmptyMessage,
   MultisigAccountModificationTransaction,
-  AccountMetadataTransaction,
-  KeyGenerator,
-  AccountMosaicRestrictionTransaction,
-  AccountRestrictionFlags,
-  MosaicAddressRestrictionTransaction,
 } from 'symbol-sdk'
 
 // internal dependencies
@@ -38,11 +30,12 @@ import { AbstractCommand } from './AbstractCommand'
  * @package NIP13 Token Commands
  * @since v0.5.0
  * @description Class that describes a token command for adding operators for NIP13 compliant tokens.
- * @summary This token command prepares one aggregate bonded transaction with following inner transactions:
+ * @summary
+ * This token command accepts the following arguments:
  *
- *  - Transaction 01: Add execution proof transaction
- *  - Transaction 02: MultisigAccountModificationTransaction updating target account
- *  - Transaction 03: MultisigAccountModificationTransaction updating partition account(s)
+ * | Argument | Description | Example |
+ * | --- | --- | --- |
+ * | `operator` | Operator account that will be added | `new PublicAccount(...)` |
  */
 export class DelegateIssuerPower extends AbstractCommand {
   /**

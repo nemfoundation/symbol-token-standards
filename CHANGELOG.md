@@ -16,6 +16,11 @@ The changelog format is based on [Keep a Changelog](https://keepachangelog.com/e
 - (NIP13) Added draft implementation for NIP13 token command `RevokeIssuerPower`
 - (NIP13) Added draft implementation for NIP13 token command `TransferOwnershipWithData`
 - (NIP13) Added draft implementation for NIP13 token command `UnlockBalance`
+- (NIP13) Improved documentation of token commands and extracted transactions to NIP13
+- (NIP13) Added class `NIP13.TokenAuthority` used solely for listing tokens (currently does not need to sign)
+- (NIP13) Added class `NIP13.TokenMetadata` and `NIP13.TokenRestrictions`
+- (NIP13) Updated `Standard` and `Command` interfaces
+- (NIP13) Updated `NIP13.TokenStandard` security token standard implementation
 
 ## [v0.5.0][v0.5.0]
 

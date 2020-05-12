@@ -111,7 +111,7 @@ export class TransactionService {
   }
   /* end block getTransactionHash */
 
-  /* start block filterElligibleTransfers */
+  /* start block filterElligibleIncomingTransfers */
   /**
    * Given an array of transactions, returns the ones that are eligible to be _transfers_.
    * A transaction is an eligible deposit when:
@@ -126,7 +126,7 @@ export class TransactionService {
    * @param tokenId (Optional) Mosaic identifier to filter.
    * @returns TransferTransaction[]
    */
-  public static filterElligibleTransfers(
+  public static filterElligibleIncomingTransfers(
     transactions: Transaction[],
     exchangeAddress: Address,
     tokenId: MosaicId|undefined,
@@ -141,7 +141,38 @@ export class TransactionService {
         && transaction.message.payload.length !== 0),
       )
   }
-  /* end block filterElligibleTransfers */
+  /* end block filterElligibleIncomingTransfers */
+
+  /* start block filterElligibleOutgoingTransfers */
+  /**
+   * Given an array of transactions, returns the ones that are eligible to be _transfers_.
+   * A transaction is an eligible deposit when:
+   * - It has type TRANSFER.
+   * - The recipient address is the exchange address.
+   * - Contains tokenId's units.
+   * - Does not contain mosaics different to tokenId.
+   * - The message field is not empty.
+   *
+   * @param transactions Array of transactions that could be eligible _transfers_.
+   * @param exchangeAddress Exchange central account address.
+   * @param tokenId (Optional) Mosaic identifier to filter.
+   * @returns TransferTransaction[]
+   */
+  public static filterElligibleOutgoingTransfers(
+    transactions: Transaction[],
+    exchangeAddress: Address,
+    tokenId: MosaicId|undefined,
+  ): TransferTransaction[] {
+    return TransactionService.filterTransferTransactions(transactions)
+      .filter((transaction) => (
+        transaction.signer!.address.equals(exchangeAddress)
+      ))
+      .filter((transaction) => (
+        transaction.message instanceof PlainMessage
+        && transaction.message.payload.length !== 0),
+      )
+  }
+  /* end block filterElligibleOutgoingTransfers */
 
   /* start block filterElligibleDeposits */
   /**
@@ -216,7 +247,7 @@ export class TransactionService {
   }
   /* end block filterElligibleWithdrawals */
 
-  /* start block getTransfers */
+  /* start block getIncomingTransfers */
   /**
    * Gets the transactions eligible to be deposits pending to be processed.
    * @param exchangeAddress Exchange central account address.
@@ -225,7 +256,7 @@ export class TransactionService {
    * @param lastTransactionId Resource identifier of the last transaction already processed.
    * @returns Observable <TransferTransaction[]>
    */
-  public getTransfers(
+  public getIncomingTransfers(
     exchangeAddress: Address,
     tokenId: MosaicId|undefined,
     requiredConfirmations: number,
@@ -239,10 +270,38 @@ export class TransactionService {
       mergeMap((transactions: Transaction[]) =>
         this.filterTransactionsWithEnoughConfirmations(transactions, requiredConfirmations)),
       map((transactions: Transaction[]) =>
-        TransactionService.filterElligibleTransfers(transactions, exchangeAddress, tokenId)),
+        TransactionService.filterElligibleIncomingTransfers(transactions, exchangeAddress, tokenId)),
     )
   }
-  /* end block getTransfers */
+  /* end block getIncomingTransfers */
+
+  /* start block getOutgoingTransfers */
+  /**
+   * Gets the transactions eligible to be deposits pending to be processed.
+   * @param exchangeAddress Exchange central account address.
+   * @param tokenId Mosaic identifier.
+   * @param requiredConfirmations Confirmations to consider a transaction persistent.
+   * @param lastTransactionId Resource identifier of the last transaction already processed.
+   * @returns Observable <TransferTransaction[]>
+   */
+  public getOutgoingTransfers(
+    exchangeAddress: Address,
+    tokenId: MosaicId|undefined,
+    requiredConfirmations: number,
+    lastTransactionId?: string,
+  ): Observable<TransferTransaction[]> {
+    return this.getUnprocessedTransactions(exchangeAddress, lastTransactionId).pipe(
+      mergeMap((transactions: Transaction[]) =>
+        this.resolveTransactionsAliases(transactions)),
+      map((transactions: Transaction[]) =>
+        TransactionService.flattenAggregateTransactions(transactions)),
+      mergeMap((transactions: Transaction[]) =>
+        this.filterTransactionsWithEnoughConfirmations(transactions, requiredConfirmations)),
+      map((transactions: Transaction[]) =>
+        TransactionService.filterElligibleOutgoingTransfers(transactions, exchangeAddress, tokenId)),
+    )
+  }
+  /* end block getOutgoingTransfers */
 
   /* start block getDeposits */
   /**

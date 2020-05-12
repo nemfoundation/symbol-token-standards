@@ -51,34 +51,17 @@ import { SecuritiesMetadata } from '../models/SecuritiesMetadata'
  * @package NIP13 Token Commands
  * @since v0.1.0
  * @description Class that describes a token command for creating NIP13 compliant tokens.
- * @transactions This token command prepares one aggregate bonded transaction with following inner transactions:
- *   - Transaction 01: MultisigAccountModificationTransaction
- *   - Transaction 02: AccountMetadataTransaction attaching `NIP13` token identifier
- *   - Transaction 03: NamespaceRegistrationtTransaction
- *   - Transaction 04: MosaicDefinitionTransaction
- *   - Transaction 05: MosaicSupplyChangeTransaction
- *   - Transaction 06: MosaicAliasTransaction
- *   - Transaction 07: MosaicMetadataTransaction attaching `NIP13` token identifier
- *   - Transaction 08: MosaicMetadataTransaction attaching `NAME`
- *   - Transaction 09: MosaicMetadataTransaction attaching `MIC` market identifier code
- *   - Transaction 10: MosaicMetadataTransaction attaching `ISIN` if non-empty option provided
- *   - Transaction 11: MosaicMetadataTransaction attaching `ISO_10962` if non-empty option provided
- *   - Transaction 12: MosaicMetadataTransaction attaching custom metadata if non-empty option provided
- *   - Transaction 13: AccountMosaicRestrictionTransaction with targets = [mosaicId, feeMosaicId] to allow mosaic and fees for TARGET account
- *   - Transaction 14: MosaicGlobalRestriction with mosaicId (refId 0) (User_Role <= 3)
- *   - Transaction 15: MosaicAddressRestriction for target account (User_Role = Target)
- *   - Transaction 16: TransferTransaction with NIP13 `CreateToken` command descriptor (Transfer to `authority` account)
+ * @summary
+ * This token command accepts the following arguments:
  *
- * :note: `Transaction 04` represents the root namespace registration transaction. Any sub namespace registration
- * transaction will be automatically added to this list.
- *
- * :note: `Transaction 10` will only be added if a non-empty value is provided for the `source` command option.
- *
- * :note: `Transaction 11` will only be added if a non-empty value is provided for the `isin` command option.
- *
- * :note: `Transaction 12` will only be added if a non-empty value is provided for the `iso10962` command option.
- *
- * :note: `Transaction 13` will only be added if a non-empty value is provided for custom metadata fields.
+ * | Argument | Description | Example |
+ * | --- | --- | --- |
+ * | name | Name of the security token | `"NIP13 Example"` |
+ * | source | Source network | `"Symbol Mainnet"` |
+ * | authority | Token Authority | `new PublicAccount(...)` |
+ * | operators | Security Token Operators | `[new PublicAccount(...)]` |
+ * | supply | Total number of outstanding shares | `123456` |
+ * | metadata | Metadata associated at token level | `{'MIC': 'XNAS', ...}` |
  */
 export class CreateToken extends AbstractCommand {
   /**
@@ -90,6 +73,7 @@ export class CreateToken extends AbstractCommand {
   public arguments: string[] = [
     'name',
     'source', // Can be Symbol generation hash or MIC (e.g. XNAS)
+    'authority',
     'operators',
     'supply',
     'metadata', // @see {NIP13/models/SecuritiesMetadata}
@@ -162,6 +146,9 @@ export class CreateToken extends AbstractCommand {
       '', // ISO_10962 (MIC)
       '', // ISO_6166 (ISIN)
       '', // ISO_10383,
+      '', // Website
+      '', // Sector
+      '', // Industry
       {}, // customMetadata
     ))
 
@@ -338,7 +325,7 @@ export class CreateToken extends AbstractCommand {
     }
 
     if (metadata.classification.length) {
-      // Transaction 11: MosaicMetadataTransaction attaching `ISIN` International Securities Identification Number
+      // Transaction 11: MosaicMetadataTransaction attaching `ISO_10962`
       transactions.push(MosaicMetadataTransaction.create(
         this.context.parameters.deadline,
         this.target.publicKey,
@@ -354,10 +341,61 @@ export class CreateToken extends AbstractCommand {
       signers.push(this.target)
     }
 
+    if (metadata.website.length) {
+      // Transaction 12: MosaicMetadataTransaction attaching `Website`
+      transactions.push(MosaicMetadataTransaction.create(
+        this.context.parameters.deadline,
+        this.target.publicKey,
+        KeyGenerator.generateUInt64Key('Website'),
+        mosaicId,
+        metadata.website.length,
+        metadata.website,
+        this.context.network.networkType,
+        undefined, // maxFee 0 for inner
+      ))
+
+      // Transaction 12 is issued by **target** account (multisig)
+      signers.push(this.target)
+    }
+
+    if (metadata.sector.length) {
+      // Transaction 13: MosaicMetadataTransaction attaching `Sector`
+      transactions.push(MosaicMetadataTransaction.create(
+        this.context.parameters.deadline,
+        this.target.publicKey,
+        KeyGenerator.generateUInt64Key('Sector'),
+        mosaicId,
+        metadata.sector.length,
+        metadata.sector,
+        this.context.network.networkType,
+        undefined, // maxFee 0 for inner
+      ))
+
+      // Transaction 13 is issued by **target** account (multisig)
+      signers.push(this.target)
+    }
+
+    if (metadata.industry.length) {
+      // Transaction 14: MosaicMetadataTransaction attaching `Industry`
+      transactions.push(MosaicMetadataTransaction.create(
+        this.context.parameters.deadline,
+        this.target.publicKey,
+        KeyGenerator.generateUInt64Key('Industry'),
+        mosaicId,
+        metadata.industry.length,
+        metadata.industry,
+        this.context.network.networkType,
+        undefined, // maxFee 0 for inner
+      ))
+
+      // Transaction 14 is issued by **target** account (multisig)
+      signers.push(this.target)
+    }
+
     const customKeys = Object.keys(metadata.customMetadata)
     if (customKeys.length) {
       for (let k = 0; k < customKeys.length; k++) {
-        // Transaction 12: MosaicMetadataTransaction attaching custom metadata
+        // Transaction 15: MosaicMetadataTransaction attaching custom metadata
         transactions.push(MosaicMetadataTransaction.create(
           this.context.parameters.deadline,
           this.target.publicKey,
@@ -369,12 +407,12 @@ export class CreateToken extends AbstractCommand {
           undefined, // maxFee 0 for inner
         ))
 
-        // Transaction 12 is issued by **target** account (multisig)
+        // Transaction 15 is issued by **target** account (multisig)
         signers.push(this.target)
       }
     }
 
-    // Transaction 13: AccountMosaicRestrictionTransaction with MosaicId = mosaicId
+    // Transaction 16: AccountMosaicRestrictionTransaction with MosaicId = mosaicId
     transactions.push(AccountMosaicRestrictionTransaction.create(
       this.context.parameters.deadline,
       AccountRestrictionFlags.AllowMosaic,
@@ -384,10 +422,10 @@ export class CreateToken extends AbstractCommand {
       undefined, // maxFee 0 for inner
     ))
 
-    // Transaction 13 is issued by **target** account (multisig)
+    // Transaction 16 is issued by **target** account (multisig)
     signers.push(this.target)
 
-    // Transaction 14: MosaicGlobalRestriction with mosaicId (refId 0)
+    // Transaction 17: MosaicGlobalRestriction with mosaicId (refId 0)
     // :warning: This restricts the **mosaic** to accounts who have the 
     //           'User_Role' flag set to at least 2 ("Holder" | "Target").
     transactions.push(MosaicGlobalRestrictionTransaction.create(
@@ -403,10 +441,10 @@ export class CreateToken extends AbstractCommand {
       undefined, // maxFee 0 for inner
     ))
 
-    // Transaction 14 is issued by **target** account (multisig)
+    // Transaction 17 is issued by **target** account (multisig)
     signers.push(this.target)
 
-    // Transaction 15: MosaicAddressRestriction for target address
+    // Transaction 18: MosaicAddressRestriction for target address
     transactions.push(MosaicAddressRestrictionTransaction.create(
       this.context.parameters.deadline,
       mosaicId,
@@ -418,10 +456,10 @@ export class CreateToken extends AbstractCommand {
       undefined, // maxFee 0 for inner
     ))
 
-    // Transaction 15 is issued by the target account
+    // Transaction 18 is issued by the target account
     signers.push(this.target)
 
-    // Transaction 16: Add execution proof transaction
+    // Transaction 19: Add execution proof transaction
     transactions.push(TransferTransaction.create(
       this.context.parameters.deadline,
       authority.address,
@@ -431,7 +469,7 @@ export class CreateToken extends AbstractCommand {
       undefined,
     ))
 
-    // Transaction 16 is issued by **target** account (multisig)
+    // Transaction 19 is issued by **target** account (multisig)
     signers.push(this.target)
 
     // return transactions issued by assigned signer

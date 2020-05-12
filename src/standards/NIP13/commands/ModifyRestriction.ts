@@ -34,17 +34,21 @@ import { AbstractCommand } from './AbstractCommand'
  * @package NIP13 Token Commands
  * @since v0.5.0
  * @description Class that describes a token command for modifying restrictions of NIP13 compliant tokens.
- * @summary This token command prepares one aggregate bonded transaction with following inner transactions:
+ * @summary
+ * This token command accepts the following arguments:
  *
- *  - Transaction 01: TransferTransaction with execution proof
- *  - Transaction 02: MosaicAddressRestriction for account address
+ * | Argument | Description | Example |
+ * | --- | --- | --- |
+ * | `restrictee` | Target account or partition account ("target of the restriction") | `new PublicAccount(...)` |
+ * | `field` | Name of the restriction | `new PublicAccount(...)` |
+ * | `value` | Minimumv value required for said restriction | `1` |
  */
 export class ModifyRestriction extends AbstractCommand {
   /**
    * @description List of **required** arguments for this token command.
    */
   public arguments: string[] = [
-    'account',
+    'restrictee',
     'field',
     'value',
   ]
@@ -110,9 +114,7 @@ export class ModifyRestriction extends AbstractCommand {
         ? 3 // 3 = default minimum value of "User_Role"
         : 0 // no previous value
 
-      // Transaction 14: MosaicGlobalRestriction with mosaicId (refId 0)
-      // :warning: This restricts the **mosaic** to accounts who have the 
-      //           'User_Role' flag set to at least 2 ("Holder" | "Target").
+      // Transaction 02: MosaicGlobalRestriction with mosaicId (refId 0)
       transactions.push(MosaicGlobalRestrictionTransaction.create(
         this.context.parameters.deadline,
         this.identifier.toMosaicId(),
@@ -126,7 +128,7 @@ export class ModifyRestriction extends AbstractCommand {
         undefined, // maxFee 0 for inner
       ))
 
-      // Transaction 14 is issued by **target** account (multisig)
+      // Transaction 02 is issued by **target** account (multisig)
       signers.push(this.target)
     }
     // 2) Modify **partition** restrictions (MosaicAddressRestriction)

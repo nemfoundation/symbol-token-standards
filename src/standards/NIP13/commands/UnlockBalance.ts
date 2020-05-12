@@ -31,10 +31,14 @@ import { AbstractCommand } from './AbstractCommand'
  * @package NIP13 Token Commands
  * @since v0.5.0
  * @description Class that describes a token command for unlocking (part of) balances of NIP13 compliant tokens.
- * @summary This token command prepares one aggregate bonded transaction with following inner transactions:
+ * @summary
+ * This token command accepts the following arguments:
  *
- *  - Transaction 01: First send back the amount to the target account
- *  - Transaction 02: Add ownership transfer transaction to partition
+ * | Argument | Description | Example |
+ * | --- | --- | --- |
+ * | partition | Token holder partition account (gets unlocked) | `new PublicAccount(...)` |
+ * | locker | Token locker account (sends back shares) | `new PublicAccount(...)` |
+ * | amount | Number of shares to be unlocked | `1` |
  */
 export class UnlockBalance extends AbstractCommand {
   /**

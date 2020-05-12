@@ -50,6 +50,8 @@ export class MetadataService extends Service {
   static KNOWN_METADATAS: {[k: string]: string} = {
     'D434152406E75CA0': 'nip13_token_identifier',
     '8B5DD479E6AB718A': 'nip13_name',
+    'CCDCF598A830B275': 'nip13_sector',
+    'B5C804D03E2CC11F': 'nip13_industry',
     'BC2FC3ACFF58FF89': 'nip13_isin',
     'D92F12883E1687AA': 'nip13_mic',
     '9E600698F53ED4F8': 'nip13_iso10962',
@@ -129,10 +131,12 @@ export class MetadataService extends Service {
       known['nip13_mic'],
       known['nip13_isin'],
       known['nip13_iso10962'],
+      known['nip13_website'],
+      known['nip13_sector'],
+      known['nip13_industry'],
       {
         'nip13_token_identifier': known['nip13_token_identifier'],
         'nip13_name': known['nip13_name'],
-        'nip13_website': known['nip13_website'],
       }
     )
   }

@@ -69,9 +69,9 @@ export class PartitionService extends Service {
     const partitions: TokenPartition[] = []
 
     // Step 1) read transfers to find partition accounts
-    const transactions: TransferTransaction[] = await service.getWithdrawals(
+    const transactions: TransferTransaction[] = await service.getOutgoingTransfers(
       target.address,
-      tokenId.toMosaicId(),
+      undefined,
       0, // no more than 1 block confirmation required
     ).toPromise()
 
@@ -97,10 +97,9 @@ export class PartitionService extends Service {
       const owner: PublicAccount = multisig.getMultisigAccountInfoFromGraph(graph).map(
         (cosig: MultisigAccountInfo) => cosig.cosignatories
       ).reduce((prev, it) => {
-        // filter out operators
         const ops = operators.map(o => o.address.plain())
         return prev.concat(it.filter(c => !ops.includes(c.address.plain())))
-      })[0] // force one
+      }, [])[0] // force one
 
       // Step 3.2) fetch partition account incoming transaction
       const lastMarker = markedTransfers.filter(

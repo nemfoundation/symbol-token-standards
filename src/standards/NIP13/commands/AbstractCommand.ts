@@ -37,6 +37,7 @@ import { PartitionService } from '../services/PartitionService'
 import { FailureEmptyContract } from '../errors/FailureEmptyContract'
 import { TransactionParameters } from '../../../models/TransactionParameters'
 import { SecuritiesMetadata } from '../models/SecuritiesMetadata'
+import { SecuritiesRestrictions } from '../models/SecuritiesRestrictions'
 
 /**
  * @class NIP13.AbstractCommand
@@ -69,6 +70,11 @@ export abstract class AbstractCommand extends BaseCommand {
    * @description The securities metadata
    */
   public metadata: SecuritiesMetadata | undefined
+
+  /**
+   * @description The securities metadata
+   */
+  public restrictions: SecuritiesRestrictions | undefined
 
   /**
    * @description List of **required** arguments for this token command.

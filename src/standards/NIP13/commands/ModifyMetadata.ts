@@ -32,13 +32,12 @@ import { SecuritiesMetadata } from '../models/SecuritiesMetadata'
  * @package NIP13 Token Commands
  * @since v0.5.0
  * @description Class that describes a token command for modifying metadata of NIP13 compliant tokens.
- * @summary This token command prepares one aggregate bonded transaction with following inner transactions:
+ * @summary
+ * This token command accepts the following arguments:
  *
- *  - Transaction 01: Transfer transaction with execution proof
- *  - Transaction 03: MosaicMetadataTransaction updating `MIC` market identifier code
- *  - Transaction 03: MosaicMetadataTransaction updating `ISIN` if non-empty option provided
- *  - Transaction 04: MosaicMetadataTransaction updating `ISO_10962` if non-empty option provided
- *  - Transaction 05: MosaicMetadataTransaction updating custom metadata if non-empty option provided
+ * | Argument | Description | Example |
+ * | --- | --- | --- |
+ * | `metadata` | Metadata associated at token level | `{'MIC': 'XNAS', ...}` |
  */
 export class ModifyMetadata extends AbstractCommand {
   /**
@@ -74,7 +73,7 @@ export class ModifyMetadata extends AbstractCommand {
    **/
   protected get transactions(): Transaction[] {
     // read external arguments
-    const metadata = this.context.getInput('metadata', new SecuritiesMetadata('', '', '', {}))
+    const metadata = this.context.getInput('metadata', new SecuritiesMetadata('', '', '', '', '', '', {}))
 
     // prepare output
     const transactions: InnerTransaction[] = []
@@ -100,7 +99,7 @@ export class ModifyMetadata extends AbstractCommand {
         this.target.publicKey,
         KeyGenerator.generateUInt64Key('MIC'),
         this.identifier.toMosaicId(),
-        metadata.mic.length - this.metadata.mic.length,
+        metadata.mic.length - this.metadata!.mic.length,
         metadata.mic,
         this.context.network.networkType,
         undefined, // maxFee 0 for inner
@@ -117,7 +116,7 @@ export class ModifyMetadata extends AbstractCommand {
         this.target.publicKey,
         KeyGenerator.generateUInt64Key('ISIN'),
         this.identifier.toMosaicId(),
-        metadata.isin.length - this.metadata.isin.length,
+        metadata.isin.length - this.metadata!.isin.length,
         metadata.isin,
         this.context.network.networkType,
         undefined, // maxFee 0 for inner
@@ -134,7 +133,7 @@ export class ModifyMetadata extends AbstractCommand {
         this.target.publicKey,
         KeyGenerator.generateUInt64Key('ISO_10962'),
         this.identifier.toMosaicId(),
-        metadata.classification.length - this.metadata.classification.length,
+        metadata.classification.length - this.metadata!.classification.length,
         metadata.classification,
         this.context.network.networkType,
         undefined, // maxFee 0 for inner
@@ -144,10 +143,61 @@ export class ModifyMetadata extends AbstractCommand {
       signers.push(this.target)
     }
 
+    if (metadata.website.length) {
+      // Transaction 05: MosaicMetadataTransaction attaching `Website`
+      transactions.push(MosaicMetadataTransaction.create(
+        this.context.parameters.deadline,
+        this.target.publicKey,
+        KeyGenerator.generateUInt64Key('Website'),
+        this.identifier.toMosaicId(),
+        metadata.website.length - this.metadata!.website.length,
+        metadata.website,
+        this.context.network.networkType,
+        undefined, // maxFee 0 for inner
+      ))
+
+      // Transaction 05 is issued by **target** account (multisig)
+      signers.push(this.target)
+    }
+
+    if (metadata.sector.length) {
+      // Transaction 06: MosaicMetadataTransaction attaching `Sector`
+      transactions.push(MosaicMetadataTransaction.create(
+        this.context.parameters.deadline,
+        this.target.publicKey,
+        KeyGenerator.generateUInt64Key('Sector'),
+        this.identifier.toMosaicId(),
+        metadata.sector.length - this.metadata!.sector.length,
+        metadata.sector,
+        this.context.network.networkType,
+        undefined, // maxFee 0 for inner
+      ))
+
+      // Transaction 06 is issued by **target** account (multisig)
+      signers.push(this.target)
+    }
+
+    if (metadata.industry.length) {
+      // Transaction 07: MosaicMetadataTransaction attaching `Industry`
+      transactions.push(MosaicMetadataTransaction.create(
+        this.context.parameters.deadline,
+        this.target.publicKey,
+        KeyGenerator.generateUInt64Key('Industry'),
+        this.identifier.toMosaicId(),
+        metadata.industry.length - this.metadata!.industry.length,
+        metadata.industry,
+        this.context.network.networkType,
+        undefined, // maxFee 0 for inner
+      ))
+
+      // Transaction 07 is issued by **target** account (multisig)
+      signers.push(this.target)
+    }
+
     const customKeys = Object.keys(metadata.customMetadata)
     if (customKeys.length) {
       for (let k = 0; k < customKeys.length; k++) {
-        // Transaction 05: MosaicMetadataTransaction updating custom metadata
+        // Transaction 08: MosaicMetadataTransaction updating custom metadata
         const oldValue = customKeys[k] in metadata.customMetadata
           ? metadata.customMetadata[customKeys[k]]
           : ''
@@ -163,7 +213,7 @@ export class ModifyMetadata extends AbstractCommand {
           undefined, // maxFee 0 for inner
         ))
 
-        // Transaction 05 is issued by **target** account (multisig)
+        // Transaction 08 is issued by **target** account (multisig)
         signers.push(this.target)
       }
     }

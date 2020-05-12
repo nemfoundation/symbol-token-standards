@@ -19,15 +19,6 @@ import {
   PublicAccount,
   TransferTransaction,
   PlainMessage,
-  Mosaic,
-  UInt64,
-  MultisigAccountModificationTransaction,
-  AccountMosaicRestrictionTransaction,
-  AccountRestrictionFlags,
-  MosaicAddressRestrictionTransaction,
-  KeyGenerator,
-  AccountMetadataTransaction,
-  EmptyMessage,
 } from 'symbol-sdk'
 
 // internal dependencies
@@ -38,21 +29,23 @@ import { TransferOwnership } from './TransferOwnership'
  * @package NIP13 Token Commands
  * @since v0.1.0
  * @description Class that describes a token command for transferring NIP13 compliant tokens and attaching data.
- * @summary This token command prepares one aggregate bonded transaction with following inner transactions:
+ * @summary
+ * This token command accepts the following arguments:
  *
- * @see TransferOwnership Transactions of the parent class are prepended to this command's transactions.
- *  - Transaction 01: Execution proof transaction
- *  - Transaction 02: Attaching signed data
+ * | Argument | Description | Example |
+ * | --- | --- | --- |
+ * | sender | Sender token holder partition account | `new PublicAccount(...)` |
+ * | recipient | Recipient token holder partition account | `new PublicAccount(...)` |
+ * | amount | Number of shares to be transferred | `1` |
+ * | data | Plain text or encrypted data to attach | `Hello, world!` |
  */
 export class TransferOwnershipWithData extends TransferOwnership {
   /**
    * @description List of **required** arguments for this token command.
    */
   public arguments: string[] = [
-    'name',
     'sender',
-    'partition',
-    'recipient',
+    'recipient', // must be a PARTITION ACCOUNT
     'amount',
     'data',
   ]
@@ -86,13 +79,18 @@ export class TransferOwnershipWithData extends TransferOwnership {
     const parentTransactions = super.transactions
 
     // read external arguments
-    const partition = this.context.getInput('partition', new PublicAccount())
+    const recipient = this.context.getInput('recipient', new PublicAccount())
     const plainData = this.context.getInput('data', '')
 
     // find partition
     const the_partition = this.partitions.find(
-      p => p.account.address.equals(partition.address)
+      p => p.account.address.equals(recipient.address)
     )
+
+    if (undefined === the_partition) {
+      // Error: partition does not exist
+      return []
+    }
 
     // prepare output
     const transactions: InnerTransaction[] = []
@@ -105,7 +103,7 @@ export class TransferOwnershipWithData extends TransferOwnership {
     // Transaction 01: Add execution proof transaction
     transactions.push(TransferTransaction.create(
       this.context.parameters.deadline,
-      partition.address,
+      the_partition.account.address,
       [],
       PlainMessage.create(this.dataDescriptor),
       this.context.network.networkType,
@@ -118,7 +116,7 @@ export class TransferOwnershipWithData extends TransferOwnership {
     // Transaction 02: Add data to partition account
     transactions.push(TransferTransaction.create(
       this.context.parameters.deadline,
-      partition.address,
+      the_partition.account.address,
       [],
       PlainMessage.create(plainData),
       this.context.network.networkType,
@@ -126,7 +124,7 @@ export class TransferOwnershipWithData extends TransferOwnership {
     ))
 
     // Transaction 02 is signer by **partition** account
-    signers.push(partition)
+    signers.push(the_partition.account)
 
     // return transactions issued by assigned signer
     return parentTransactions.concat(transactions.map(

@@ -49,6 +49,21 @@ export class SecuritiesMetadata {
     public classification: string,
 
     /**
+     * @description The website of the financial instrument
+     */
+    public website: string,
+
+    /**
+     * @description The sector of the financial instrument (e.g.: Capital Goods)
+     */
+    public sector: string,
+
+    /**
+     * @description The industry of the financial instrument (e.g.: Computer Manufacturing)
+     */
+    public industry: string,
+
+    /**
      * @description Custom metadata entries
      */
     public customMetadata: {[k: string]: string} = {},

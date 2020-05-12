@@ -38,15 +38,14 @@ import { AbstractCommand } from './AbstractCommand'
  * @package NIP13 Token Commands
  * @since v0.5.0
  * @description Class that describes a token command for locking (part of) balances of NIP13 compliant tokens.
- * @summary This token command prepares one aggregate bonded transaction with following inner transactions:
+ * @summary
+ * This token command accepts the following arguments:
  *
- *  - Transaction 01: Add execution proof transaction
- *  - Transaction 02: MultisigAccountModificationTransaction
- *  - Transaction 03: AccountMetadataTransaction attaching `Is_Lock`
- *  - Transaction 04: AccountMosaicRestrictionTransaction for mosaicId & fee
- *  - Transaction 05: MosaicAddressRestriction with `User_Role = Locker` for locker
- *  - Transaction 06: First send back the amount to the target account
- *  - Transaction 07: Add ownership transfer transaction to locker account
+ * | Argument | Description | Example |
+ * | --- | --- | --- |
+ * | partition | Token holder partition account (gets locked) | `new PublicAccount(...)` |
+ * | locker | Token locker account (lock account) | `new PublicAccount(...)` |
+ * | amount | Number of shares to be locked | `1` |
  */
 export class LockBalance extends AbstractCommand {
   /**

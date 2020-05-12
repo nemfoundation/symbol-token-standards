@@ -72,15 +72,20 @@ export interface Standard {
   ): NotificationProof
 
   /**
-   * Verifies **allowance** of `sender` to transfer `tokenId` security token.
+   * Verifies **allowance** of `sender` to transfer `tokenId` security token
+   * to `recipient` with a number of shares attached of `amount`.
    *
-   * @param   {PublicAccount}         sender
    * @param   {TokenIdentifier} tokenId
+   * @param   {PublicAccount}   sender
+   * @param   {PublicAccount}   recipient
+   * @param   {number}          amount
    * @return  {AllowanceResult}
    **/
   canTransfer(
-    sender: PublicAccount,
     tokenId: TokenIdentifier,
+    sender: PublicAccount,
+    recipient: PublicAccount,
+    amount: number,
   ): AllowanceResult
 
   /**
@@ -103,6 +108,30 @@ export interface Standard {
   /**
    * Execute `command` for Security Token with identifier `tokenId`. Arguments
    * the command execution can be passed in `argv`.
+   * 
+   * This method MUST call the `synchronize()` method.
+   *
+   * @internal This method MUST use the `Command.execute()` method.
+   * @param   {PublicAccount}         actor
+   * @param   {TokenIdentifier}       tokenId
+   * @param   {string}                command
+   * @param   {TransactionParameters} parameters
+   * @param   {Array<CommandOption>}  argv
+   * @return  {Promise<TransactionURI>}
+   **/
+  execute(
+    actor: PublicAccount,
+    tokenId: TokenIdentifier,
+    command: string,
+    parameters: TransactionParameters,
+    argv: CommandOption[],
+  ): Promise<TransactionURI>
+
+  /**
+   * Execute `command` for Security Token with identifier `tokenId`. Arguments
+   * the command execution can be passed in `argv`.
+   * 
+   * This method MUST NOT call the `synchronize()` method.
    *
    * @internal This method MUST use the `Command.execute()` method.
    * @param   {PublicAccount}         actor
@@ -112,39 +141,11 @@ export interface Standard {
    * @param   {Array<CommandOption>}  argv
    * @return  {TransactionURI}
    **/
-  execute(
+  executeWithoutSync(
     actor: PublicAccount,
     tokenId: TokenIdentifier,
     command: string,
     parameters: TransactionParameters,
     argv: CommandOption[],
   ): TransactionURI
-
-  /**
-   * Gets an execution context
-   *
-   * @param   {PublicAccount}   actor
-   * @param   {TransactionParameters} parameters
-   * @param   {CommandOption[]} argv
-   * @return  {Context}
-   **/
-  getContext(
-    actor: PublicAccount,
-    parameters: TransactionParameters,
-    argv?: CommandOption[],
-  ): Context
-
-  /**
-   * Gets a command instance around `context` and `tokenId`.
-   *
-   * @param {TokenIdentifier} tokenId 
-   * @param {string}          command 
-   * @param {Context}         context 
-   * @return {Command}
-   */
-  getCommand(
-    tokenId: TokenIdentifier,
-    command: string,
-    context: Context,
-  ): Command
 }

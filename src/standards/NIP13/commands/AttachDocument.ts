@@ -32,20 +32,20 @@ import { AbstractCommand } from './AbstractCommand'
  * @class NIP13.AttachDocument
  * @package NIP13 Token Commands
  * @since v0.5.0
- * @description Class that describes a token command for attaching document to NIP13 compliant tokens.
+ * @description Class that describes a token command for attaching documents to NIP13 compliant tokens or to token partitions.
  * @summary This token command prepares one aggregate bonded transaction with following inner transactions:
  *
  *  - Transaction 01: Execution proof transaction
- *  - Transaction 02: Attach document hash to be signed by target account
+ *  - Transaction 02: Attach document hash to be signed by recipient account
  */
 export class AttachDocument extends AbstractCommand {
   /**
    * @description List of **required** arguments for this token command.
    */
   public arguments: string[] = [
-    'algorithm', // one of 'SHA3-256', 'SHA3-512'
-    'document', // binary data
+    'filenode', // IPNS file name (starts with `Qm`)
     'filename',
+    'recipient', // can be either of TARGET or PARTITION accounts
   ]
 
   // region abstract methods
@@ -74,24 +74,31 @@ export class AttachDocument extends AbstractCommand {
    **/
   protected get transactions(): Transaction[] {
     // read external arguments
-    const algorithm = this.context.getInput('algorithm', 'SHA3-256')
-    const document = this.context.getInput('document', '')
-    const filename = this.context.getInput('locker', new PublicAccount())
+    const filenode = this.context.getInput('filenode', '')
+    const filename = this.context.getInput('filename', '')
+    const recipient = this.context.getInput('recipient', new PublicAccount())
 
-    // determine hash size by algorithm
-    let hashSize: number = 32
-    switch (algorithm.toUpperCase()) {
-      default:
-      case 'SHA3-256': hashSize = 32; break;
-      case 'SHA3-512': hashSize = 64; break;
+    if (!filenode.length || !filename.length) {
+      // Error: Invalid arguments
+      return []
     }
 
-    // generate deterministic document hash
-    const hash = new Uint8Array(64)
-    SHA3Hasher.func(hash, Convert.utf8ToUint8(document), 64)
+    if (!filenode.startsWith('Qm')) {
+      // Error: Invalid IPFS file hash
+      return []
+    }
 
-    // convert to hexadecimal
-    const documentHash = Convert.uint8ToHex(hash)
+    if (!recipient.address.equals(this.target.address)) {
+      const the_partition = this.partitions.find(
+        (p) => p.account.address.equals(recipient.address)
+      )
+
+      // AttachDocument is only possible for target account or existing partitions
+      if (undefined === the_partition) {
+        // Error: partition does not exist
+        return []
+      }
+    }
 
     // prepare output
     const transactions: InnerTransaction[] = []
@@ -100,28 +107,28 @@ export class AttachDocument extends AbstractCommand {
     // Transaction 01: Add execution proof transaction
     transactions.push(TransferTransaction.create(
       this.context.parameters.deadline,
-      this.target.address,
+      recipient.address,
       [],
       PlainMessage.create(this.descriptor),
       this.context.network.networkType,
       undefined,
     ))
 
-    // Transaction 01 is issued by **target** account
-    signers.push(this.target)
+    // Transaction 01 is issued by **recipient** account
+    signers.push(recipient)
 
-    // Transaction 02: Attach document hash to be signed by target account
+    // Transaction 02: Attach document hash to be signed by recipient account
     transactions.push(TransferTransaction.create(
       this.context.parameters.deadline,
-      this.target.address,
+      recipient.address,
       [],
-      PlainMessage.create(filename + ':' + documentHash),
+      PlainMessage.create(filename + ':' + filenode),
       this.context.network.networkType,
       undefined,
     ))
 
-    // Transaction 02 is issued by **target** account
-    signers.push(this.target)
+    // Transaction 02 is issued by **recipient** account
+    signers.push(recipient)
 
     // return transactions issued by assigned signer
     return transactions.map(

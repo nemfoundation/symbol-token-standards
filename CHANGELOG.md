@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 
 The changelog format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [v0.5.2][v0.5.2]
+
+- (NIP13) Added metadata field 'OWNER' for CreatePartition
+
 ## [v0.5.1][v0.5.1]
 
 - (NIP13) Added draft implementation for NIP13 token command `AttachDocument`

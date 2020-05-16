@@ -129,6 +129,20 @@ export class CreatePartition extends AbstractCommand {
     // Transaction 02 is issued by **partition** account
     signers.push(partition)
 
+    // Transaction 03: AccountMetadataTransaction
+    transactions.push(AccountMetadataTransaction.create(
+      this.context.parameters.deadline,
+      partition.publicKey,
+      KeyGenerator.generateUInt64Key('OWNER'),
+      holder.address.plain().length,
+      holder.address.plain(),
+      this.context.network.networkType,
+      undefined, // maxFee 0 for inner
+    ))
+
+    // Transaction 03 is issued by **partition** account
+    signers.push(partition)
+
     // Transaction 03: AccountMosaicRestrictionTransaction
     // :note: This transaction authorizes mosaicId and networkCurrencyMosaicId for partition
     transactions.push(AccountMosaicRestrictionTransaction.create(

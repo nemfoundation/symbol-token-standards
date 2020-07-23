@@ -2,7 +2,6 @@
   "name": "symbol-token-standards",
   "version": "0.5.3",
   "description": "Symbol library to handle Token Standards",
-  "author": "NEM Foundation <devs@nem.foundation>",
   "main": "dist/index.js",
   "typings": "dist/index.d.ts",
   "directories": {
@@ -43,13 +42,13 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/nemfoundation/symbol-token-standards.git"
+    "url": "git+https://github.com/nemgrouplimited/symbol-token-standards.git"
   },
   "license": "Apache-2.0",
   "bugs": {
-    "url": "https://github.com/nemfoundation/symbol-token-standards/issues"
+    "url": "https://github.com/nemgrouplimited/symbol-token-standards/issues"
   },
-  "homepage": "https://github.com/nemfoundation/symbol-token-standards#readme",
+  "homepage": "https://github.com/nemgrouplimited/symbol-token-standards#readme",
   "nyc": {
     "exclude": [
       "**/*.spec.js"
